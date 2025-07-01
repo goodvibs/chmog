@@ -31,10 +31,21 @@ pub const Move = packed struct {
     }
 
     pub fn uci(self: Move, buffer: []u8) ![]const u8 {
-        const isPromotion = self.flag == MoveFlag.Promotion;
+        if (buffer.len < 5) return error.BufferTooSmall;
+
         const from = self.from.name();
         const to = self.to.name();
-        const promotion = if (isPromotion) self.promotion.piece().lowercaseAscii() else "";
-        return std.fmt.bufPrint(buffer, "{s}{s}{s}", .{ from, to, promotion });
+
+        buffer[0] = from[0];
+        buffer[1] = from[1];
+        buffer[2] = to[0];
+        buffer[3] = to[1];
+
+        if (self.flag == MoveFlag.Promotion) {
+            buffer[4] = self.promotion.piece().lowercaseAscii();
+            return buffer[0..5];
+        } else {
+            return buffer[0..4];
+        }
     }
 };

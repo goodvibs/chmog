@@ -129,10 +129,10 @@ pub const PromotionPiece = enum(u2) {
 
     pub fn fromPiece(piece_: Piece) !PromotionPiece {
         if (piece_ != Piece.Knight and piece_ != Piece.Bishop and piece_ != Piece.Rook and piece_ != Piece.Queen) return error.InvalidPiece;
-        return @enumFromInt(piece_.int() - comptime Piece.Knight.int());
+        return @enumFromInt(piece_.int() - Piece.Knight.int());
     }
 
     pub fn piece(self: PromotionPiece) Piece {
-        return Piece.fromInt(@as(u3, self.int()) + comptime Piece.Knight.int());
+        return Piece.fromInt(@as(u3, self.int()) + Piece.Knight.int()) catch unreachable;
     }
 };

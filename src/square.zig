@@ -19,7 +19,7 @@ pub const Rank = enum(u3) {
     }
 
     pub fn mask(self: Rank) Bitboard {
-        return 0xFF_00_00_00_00_00_00_00 >> (self.int() * 8);
+        return @as(Bitboard, 0xFF_00_00_00_00_00_00_00) >> @as(u6, @intCast(self.int())) * 8;
     }
 };
 
@@ -109,14 +109,14 @@ pub const Square = enum(u6) {
     H1 = 63,
 
     pub const NAMES = [64][2]u8{
-        "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
-        "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
-        "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
-        "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
-        "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
-        "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
-        "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
-        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+        [2]u8{ 'a', '8' }, [2]u8{ 'b', '8' }, [2]u8{ 'c', '8' }, [2]u8{ 'd', '8' }, [2]u8{ 'e', '8' }, [2]u8{ 'f', '8' }, [2]u8{ 'g', '8' }, [2]u8{ 'h', '8' },
+        [2]u8{ 'a', '7' }, [2]u8{ 'b', '7' }, [2]u8{ 'c', '7' }, [2]u8{ 'd', '7' }, [2]u8{ 'e', '7' }, [2]u8{ 'f', '7' }, [2]u8{ 'g', '7' }, [2]u8{ 'h', '7' },
+        [2]u8{ 'a', '6' }, [2]u8{ 'b', '6' }, [2]u8{ 'c', '6' }, [2]u8{ 'd', '6' }, [2]u8{ 'e', '6' }, [2]u8{ 'f', '6' }, [2]u8{ 'g', '6' }, [2]u8{ 'h', '6' },
+        [2]u8{ 'a', '5' }, [2]u8{ 'b', '5' }, [2]u8{ 'c', '5' }, [2]u8{ 'd', '5' }, [2]u8{ 'e', '5' }, [2]u8{ 'f', '5' }, [2]u8{ 'g', '5' }, [2]u8{ 'h', '5' },
+        [2]u8{ 'a', '4' }, [2]u8{ 'b', '4' }, [2]u8{ 'c', '4' }, [2]u8{ 'd', '4' }, [2]u8{ 'e', '4' }, [2]u8{ 'f', '4' }, [2]u8{ 'g', '4' }, [2]u8{ 'h', '4' },
+        [2]u8{ 'a', '3' }, [2]u8{ 'b', '3' }, [2]u8{ 'c', '3' }, [2]u8{ 'd', '3' }, [2]u8{ 'e', '3' }, [2]u8{ 'f', '3' }, [2]u8{ 'g', '3' }, [2]u8{ 'h', '3' },
+        [2]u8{ 'a', '2' }, [2]u8{ 'b', '2' }, [2]u8{ 'c', '2' }, [2]u8{ 'd', '2' }, [2]u8{ 'e', '2' }, [2]u8{ 'f', '2' }, [2]u8{ 'g', '2' }, [2]u8{ 'h', '2' },
+        [2]u8{ 'a', '1' }, [2]u8{ 'b', '1' }, [2]u8{ 'c', '1' }, [2]u8{ 'd', '1' }, [2]u8{ 'e', '1' }, [2]u8{ 'f', '1' }, [2]u8{ 'g', '1' }, [2]u8{ 'h', '1' },
     };
 
     pub fn fromInt(index: u6) Square {
@@ -128,24 +128,24 @@ pub const Square = enum(u6) {
     }
 
     pub fn fromRankAndFile(rank_: Rank, file_: File) Square {
-        return Square.fromInt(rank_.int() * 8 + file_.int());
+        return Square.fromInt(@as(u6, rank_.int()) * 8 + @as(u6, file_.int()));
     }
 
     pub fn rank(self: Square) Rank {
-        return Rank.fromInt(self.int() / 8);
+        return Rank.fromInt(@intCast(self.int() / 8));
     }
 
     pub fn file(self: Square) File {
-        return File.fromInt(self.int() % 8);
+        return File.fromInt(@intCast(self.int() % 8));
     }
 
     pub fn fromMask(bitboard: Bitboard) !Square {
         if (bitboard == 0) return error.InvalidBitboard else if (@popCount(bitboard) != 1) return error.MultipleBitsSet;
-        return Square.fromInt(@clz(bitboard));
+        return Square.fromInt(@truncate(@clz(bitboard)));
     }
 
     pub fn mask(self: Square) Bitboard {
-        return 1 << self.int();
+        return @as(Bitboard, 1) << self.int();
     }
 
     pub fn distanceFromTop(self: Square) u3 {
@@ -185,7 +185,7 @@ pub const Square = enum(u6) {
     }
 
     pub fn upLeft(self: Square) ?Square {
-        if (self.file() == file.A or self.rank() == Rank.Eight) return null;
+        if (self.file() == File.A or self.rank() == Rank.Eight) return null;
         return Square.fromInt(self.int() - 9);
     }
 
@@ -204,7 +204,7 @@ pub const Square = enum(u6) {
         return Square.fromInt(self.int() + 9);
     }
 
-    pub fn name(self: Square) u8 {
+    pub fn name(self: Square) [2]u8 {
         return NAMES[self.int()];
     }
 };
