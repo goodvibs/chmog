@@ -24,6 +24,19 @@ pub fn singleKingAttacks(from: Square) Bitboard {
 }
 
 const testing = @import("std").testing;
-test "alwaysFail" {
-    try testing.expect(false);
+
+test "singleKnightAttacks" {
+    for (0..64) |i| {
+        const square = Square.fromInt(@as(u6, @intCast(i)));
+        const expected = multiKnightAttacks(square.mask());
+        try testing.expectEqual(expected, singleKnightAttacks(square));
+    }
+}
+
+test "singleKingAttacks" {
+    for (0..64) |i| {
+        const square = Square.fromInt(@as(u6, @intCast(i)));
+        const expected = multiKingAttacks(square.mask());
+        try testing.expectEqual(expected, singleKingAttacks(square));
+    }
 }
