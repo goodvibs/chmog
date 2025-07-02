@@ -18,11 +18,13 @@ fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (S
     }.next_;
 }
 
-fn computeBishopRelevantMask(from: Square) Bitboard {
+fn computeBishopRelevantMask(from_: [1]Square) Bitboard {
+    const from = from_[0];
     return from.diagonalsMask() & ~(from.mask() | masks.FILE_A | masks.FILE_H | masks.RANK_1 | masks.RANK_8);
 }
 
-fn computeRookRelevantMask(from: Square) Bitboard {
+fn computeRookRelevantMask(from_: [1]Square) Bitboard {
+    const from = from_[0];
     const up = from.buildMask(from.mask(), stopIfMask(Square.up, masks.RANK_8));
     const down = from.buildMask(0, stopIfMask(Square.down, masks.RANK_1));
     const left = from.buildMask(0, stopIfMask(Square.left, masks.FILE_A));
@@ -71,6 +73,8 @@ fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Squ
 
         fn init(comptime computeAttacks: fn (Square, Bitboard) Bitboard) Self {
             comptime {
+                @setEvalBranchQuota(9999999);
+
                 var attacksTable: [size]Bitboard = undefined;
                 var magicInfoLookup: [64]MagicInfo = undefined;
                 var currentOffset = 0;
@@ -97,7 +101,7 @@ fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Squ
 
                     while (true) {
                         magicNumberForSquare = prng.sparseRand(Bitboard);
-                        if (@popCount(relevantMask *% magicNumberForSquare & Rank.One.mask()) < 6) continue;
+                        if (@popCount(relevantMask *% magicNumberForSquare & masks.RANK_1) < 6) continue;
                         @memset(&attacksForSquare, 0);
                         var collision = false;
 
