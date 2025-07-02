@@ -126,12 +126,12 @@ pub const Square = enum(u6) {
     }
 
     pub fn up(self: Square) ?Square {
-        if (self.rank() == Rank.One) return null;
+        if (self.rank() == Rank.Eight) return null;
         return Square.fromInt(self.int() - 8);
     }
 
     pub fn down(self: Square) ?Square {
-        if (self.rank() == Rank.Eight) return null;
+        if (self.rank() == Rank.One) return null;
         return Square.fromInt(self.int() + 8);
     }
 
@@ -174,22 +174,6 @@ pub const Square = enum(u6) {
         return self.buildMask(acc | nextSquare.mask(), next);
     }
 
-    fn computeDiagonalsMask(self: Square) Bitboard {
-        const ascendingUpper = self.buildMask(self.mask(), Square.upRight);
-        const ascendingLower = self.buildMask(0, Square.downLeft);
-        const descendingUpper = self.buildMask(0, Square.upLeft);
-        const descendingLower = self.buildMask(0, Square.downRight);
-        return ascendingUpper | ascendingLower | descendingUpper | descendingLower;
-    }
-
-    fn computeOrthogonalsMask(self: Square) Bitboard {
-        const up_ = self.buildMask(self.mask(), Square.up);
-        const down_ = self.buildMask(0, Square.down);
-        const left_ = self.buildMask(0, Square.left);
-        const right_ = self.buildMask(0, Square.right);
-        return up_ | down_ | left_ | right_;
-    }
-
     pub fn diagonalsMask(self: Square) Bitboard {
         return DIAGONALS_MASK_LOOKUP.get([1]Square{self});
     }
@@ -199,5 +183,23 @@ pub const Square = enum(u6) {
     }
 };
 
-const DIAGONALS_MASK_LOOKUP = SquareToBitboard.init(Square.computeDiagonalsMask);
-const ORTHOGONALS_MASK_LOOKUP = SquareToBitboard.init(Square.computeOrthogonalsMask);
+fn computeDiagonalsMask(from_: [1]Square) Bitboard {
+    const from = from_[0];
+    const ascendingUpper = from.buildMask(from.mask(), Square.upRight);
+    const ascendingLower = from.buildMask(0, Square.downLeft);
+    const descendingUpper = from.buildMask(0, Square.upLeft);
+    const descendingLower = from.buildMask(0, Square.downRight);
+    return ascendingUpper | ascendingLower | descendingUpper | descendingLower;
+}
+
+fn computeOrthogonalsMask(from_: [1]Square) Bitboard {
+    const from = from_[0];
+    const up_ = from.buildMask(from.mask(), Square.up);
+    const down_ = from.buildMask(0, Square.down);
+    const left_ = from.buildMask(0, Square.left);
+    const right_ = from.buildMask(0, Square.right);
+    return up_ | down_ | left_ | right_;
+}
+
+const DIAGONALS_MASK_LOOKUP = SquareToBitboard.init(computeDiagonalsMask);
+const ORTHOGONALS_MASK_LOOKUP = SquareToBitboard.init(computeOrthogonalsMask);

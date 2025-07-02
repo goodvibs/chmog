@@ -15,7 +15,8 @@ pub fn SquaresMappingLookup(comptime numSquaresPerKey: usize, comptime OutputTyp
 
         pub fn init(comptime computeMapping: fn ([numSquaresPerKey]Square) OutputType) Self {
             comptime {
-                @setEvalBranchQuota(15 * NUM_KEYS);
+                // @setEvalBranchQuota(15 * NUM_KEYS);
+                @setEvalBranchQuota(9999999);
                 var memory: [NUM_KEYS]OutputType = undefined;
                 var currentKey: [numSquaresPerKey]Square = undefined;
                 fillMappings(&memory, &currentKey, 0, computeMapping);
@@ -51,7 +52,7 @@ pub fn SquaresMappingLookup(comptime numSquaresPerKey: usize, comptime OutputTyp
     };
 }
 
-const testing = std.testing;
+const testing = @import("std").testing;
 
 fn computeMapping_(key: [2]Square) Bitboard {
     return @as(Bitboard, key[0].int()) + @as(Bitboard, key[1].int());

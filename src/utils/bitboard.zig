@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Bitboard = u64;
+const Bitboard = @import("../mod.zig").Bitboard;
 
 pub fn iterSetBits(bitboard: Bitboard) MaskBitsIterator {
     return MaskBitsIterator{ .currentMask = bitboard };

@@ -3,7 +3,7 @@ const Square = @import("../mod.zig").Square;
 const Rank = @import("../mod.zig").Rank;
 const Prng = @import("../mod.zig").utils.Prng;
 const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
-const iterBitCombinations = @import("../mod.zig").iterBitCombinations;
+const iterBitCombinations = @import("../mod.zig").utils.iterBitCombinations;
 const manual = @import("../mod.zig").attacks.manual;
 const masks = @import("../mod.zig").masks;
 
