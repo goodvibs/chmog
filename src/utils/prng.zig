@@ -15,13 +15,9 @@ pub const Prng = struct {
         return self.s *% 2685821657736338717; // Use *% for wrapping multiply
     }
 
-    pub fn rand(self: *Prng, comptime T: type) T {
-        return @truncate(self.randBitboard());
-    }
-
     // Special generator for magic number generation
     // Output values only have 1/8th of their bits set on average
-    pub fn sparseRand(self: *Prng, comptime T: type) T {
-        return @truncate(self.randBitboard() & self.randBitboard() & self.randBitboard());
+    pub fn sparseRandBitboard(self: *Prng) Bitboard {
+        return self.randBitboard() & self.randBitboard() & self.randBitboard();
     }
 };
