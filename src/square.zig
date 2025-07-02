@@ -171,7 +171,7 @@ pub const Square = enum(u6) {
 
     pub fn buildMask(self: Square, acc: Bitboard, next: fn (Square) ?Square) Bitboard {
         const nextSquare = next(self) orelse return acc;
-        return self.buildMask(acc | nextSquare.mask(), next);
+        return nextSquare.buildMask(acc | nextSquare.mask(), next);
     }
 
     pub fn diagonalsMask(self: Square) Bitboard {
