@@ -1,6 +1,3 @@
-const std = @import("std");
-const testing = std.testing;
-
 pub const Color = enum(u1) {
     White = 0,
     Black = 1,
@@ -17,6 +14,8 @@ pub const Color = enum(u1) {
         return Color.fromInt(~self.int());
     }
 };
+
+const testing = @import("std").testing;
 
 test "color" {
     try testing.expectEqual(@as(u1, 0), Color.White.int());
