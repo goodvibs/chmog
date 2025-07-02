@@ -1,5 +1,3 @@
-const std = @import("std");
-
 const Bitboard = @import("mod.zig").Bitboard;
 
 pub const Prng = struct {

@@ -1,16 +1,52 @@
-const Bitboard = @import("mod.zig").Bitboard;
-const Square = @import("mod.zig").Square;
-const Rank = @import("mod.zig").Rank;
-const Prng = @import("mod.zig").Prng;
-const iterBitCombinations = @import("mod.zig").iterBitCombinations;
-const manual = @import("mod.zig").attacks.manual;
+const Bitboard = @import("../mod.zig").Bitboard;
+const Square = @import("../mod.zig").Square;
+const Rank = @import("../mod.zig").Rank;
+const Prng = @import("../mod.zig").utils.Prng;
+const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
+const iterBitCombinations = @import("../mod.zig").iterBitCombinations;
+const manual = @import("../mod.zig").attacks.manual;
+const masks = @import("../mod.zig").masks;
 
-const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (28 << 11) + (4 << 12);
+fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (Square) ?Square {
+    return struct {
+        fn next_(current: Square) ?Square {
+            if (next(current)) |nextSquare| {
+                if (nextSquare.mask() & mask == 0) return nextSquare;
+            }
+            return null;
+        }
+    }.next_;
+}
+
+fn computeBishopRelevantMask(from: Square) Bitboard {
+    return from.diagonalsMask() & ~(from.mask() | masks.FILE_A | masks.FILE_H | masks.RANK_1 | masks.RANK_8);
+}
+
+fn computeRookRelevantMask(from: Square) Bitboard {
+    const up = from.buildMask(from.mask(), stopIfMask(Square.up, masks.RANK_8));
+    const down = from.buildMask(0, stopIfMask(Square.down, masks.RANK_1));
+    const left = from.buildMask(0, stopIfMask(Square.left, masks.FILE_A));
+    const right = from.buildMask(0, stopIfMask(Square.right, masks.FILE_H));
+    return up | down | left | right;
+}
+
+const BISHOP_RELEVANT_MASK_LOOKUP = SquareToBitboard.init(computeBishopRelevantMask);
+const ROOK_RELEVANT_MASK_LOOKUP = SquareToBitboard.init(computeRookRelevantMask);
+
+fn bishopRelevantMask(from: Square) Bitboard {
+    return BISHOP_RELEVANT_MASK_LOOKUP.get([1]Square{from});
+}
+
+fn rookRelevantMask(from: Square) Bitboard {
+    return ROOK_RELEVANT_MASK_LOOKUP.get([1]Square{from});
+}
+
 const BISHOP_ATTACK_TABLE_SIZE: usize = (4 << 6) + (44 << 5) + (12 << 7) + (4 << 9);
+const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
 
-const BISHOP_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE, Square.bishopRelevantMask)
+const BISHOP_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE, bishopRelevantMask)
     .init(manual.singleBishopAttacks);
-const ROOK_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE, Square.rookRelevantMask)
+const ROOK_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE, rookRelevantMask)
     .init(manual.singleRookAttacks);
 
 pub fn singleBishopAttacks(from: Square) Bitboard {
