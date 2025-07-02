@@ -1,4 +1,4 @@
-const Bitboard = @import("mod.zig").Bitboard;
+const Bitboard = @import("../mod.zig").Bitboard;
 
 pub const Prng = struct {
     s: Bitboard,
