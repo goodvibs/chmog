@@ -27,15 +27,15 @@ pub fn multiPawnAttacks(pawns: Bitboard, comptime color: Color) Bitboard {
 }
 
 pub fn multiKnightAttacks(knights: Bitboard) Bitboard {
-    const twoUpOneLeft = (knights << 17) & comptime ~FILE_H;
-    const twoUpOneRight = (knights << 15) & comptime ~FILE_A;
-    const twoLeftOneUp = (knights << 10) & comptime ~(FILE_G | FILE_H);
-    const twoRightOneUp = (knights << 6) & comptime ~(FILE_A | FILE_B);
+    const twoUpOneLeft = (knights << 17) & ~FILE_H;
+    const twoUpOneRight = (knights << 15) & ~FILE_A;
+    const twoLeftOneUp = (knights << 10) & ~(FILE_G | FILE_H);
+    const twoRightOneUp = (knights << 6) & ~(FILE_A | FILE_B);
 
-    const twoDownOneLeft = (knights >> 15) & comptime ~FILE_H;
-    const twoDownOneRight = (knights >> 17) & comptime ~FILE_A;
-    const twoLeftOneDown = (knights >> 6) & comptime ~(FILE_G | FILE_H);
-    const twoRightOneDown = (knights >> 10) & comptime ~(FILE_A | FILE_B);
+    const twoDownOneLeft = (knights >> 15) & ~FILE_H;
+    const twoDownOneRight = (knights >> 17) & ~FILE_A;
+    const twoLeftOneDown = (knights >> 6) & ~(FILE_G | FILE_H);
+    const twoRightOneDown = (knights >> 10) & ~(FILE_A | FILE_B);
 
     return twoUpOneLeft | twoUpOneRight | twoLeftOneUp | twoRightOneUp | twoDownOneLeft | twoDownOneRight | twoLeftOneDown | twoRightOneDown;
 }
@@ -101,3 +101,7 @@ pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
     }
     return attacks;
 }
+
+const testing = @import("std").testing;
+
+test "attacks"
