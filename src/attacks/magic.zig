@@ -25,7 +25,7 @@ fn computeBishopRelevantMask(from_: [1]Square) Bitboard {
 
 fn computeRookRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
-    const up = from.buildMask(from.mask(), stopIfMask(Square.up, masks.RANK_8));
+    const up = from.buildMask(0, stopIfMask(Square.up, masks.RANK_8));
     const down = from.buildMask(0, stopIfMask(Square.down, masks.RANK_1));
     const left = from.buildMask(0, stopIfMask(Square.left, masks.FILE_A));
     const right = from.buildMask(0, stopIfMask(Square.right, masks.FILE_H));
