@@ -157,3 +157,36 @@ pub const MagicInfo = struct {
         return @truncate(unshiftedKey >> self.shift);
     }
 };
+
+const std = @import("std");
+const testing = @import("std").testing;
+const renderBitboard = @import("../mod.zig").utils.renderBitboard;
+
+fn assertCountEquals(comptime T: type, slice: []const T, value: T, expectedCount: T) !void {
+    var count: T = 0;
+    for (slice) |item| {
+        if (item == value) count += 1;
+    }
+    try testing.expectEqual(expectedCount, count);
+}
+
+test "relevantMask" {
+    var bishopRelevantBits: [64]u7 = undefined;
+    var rookRelevantBits: [64]u7 = undefined;
+    for (0..64) |i| {
+        const square = Square.fromInt(@as(u6, @intCast(i)));
+        const b = bishopRelevantMask(square);
+        const r = rookRelevantMask(square);
+        bishopRelevantBits[i] = @popCount(b);
+        rookRelevantBits[i] = @popCount(r);
+    }
+
+    try assertCountEquals(u7, &bishopRelevantBits, 6, 4);
+    try assertCountEquals(u7, &bishopRelevantBits, 5, 44);
+    try assertCountEquals(u7, &bishopRelevantBits, 7, 12);
+    try assertCountEquals(u7, &bishopRelevantBits, 9, 4);
+
+    try assertCountEquals(u7, &rookRelevantBits, 10, 36);
+    try assertCountEquals(u7, &rookRelevantBits, 11, 24);
+    try assertCountEquals(u7, &rookRelevantBits, 12, 4);
+}
