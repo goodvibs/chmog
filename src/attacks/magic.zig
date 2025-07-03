@@ -101,7 +101,7 @@ fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Squ
 
                     while (true) {
                         magicNumberForSquare = prng.sparseRandBitboard();
-                        if (@popCount(relevantMask *% magicNumberForSquare & masks.RANK_8) < 6) continue;
+                        if (@popCount((relevantMask *% magicNumberForSquare) >> 56) < 6) continue;
                         @memset(&attacksForSquare, 0);
                         var collision = false;
 
