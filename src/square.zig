@@ -106,7 +106,7 @@ pub const Square = enum(u6) {
     }
 
     pub fn mask(self: Square) Bitboard {
-        return @as(Bitboard, 1) << self.int();
+        return @as(Bitboard, 1 << 63) >> self.int();
     }
 
     pub fn distanceFromTop(self: Square) u3 {

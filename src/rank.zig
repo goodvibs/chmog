@@ -17,7 +17,7 @@ pub const Rank = enum(u3) {
     }
 
     pub fn char(self: Rank) u8 {
-        return (7 - self.int()) + '1';
+        return @as(u8, 7 - self.int()) + '1';
     }
 };
 

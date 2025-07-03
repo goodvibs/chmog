@@ -17,11 +17,11 @@ pub const File = enum(u3) {
     }
 
     pub fn lowercaseChar(self: File) u8 {
-        return self.int() + 'a';
+        return @as(u8, self.int()) + 'a';
     }
 
     pub fn uppercaseChar(self: File) u8 {
-        return self.int() + 'A';
+        return @as(u8, self.int()) + 'A';
     }
 };
 
