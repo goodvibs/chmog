@@ -104,11 +104,11 @@ pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
 
 const std = @import("std");
 const testing = @import("std").testing;
-const renderBb = @import("../mod.zig").utils.renderBb;
+const renderBitboard = @import("../mod.zig").utils.renderBitboard;
 
 test "attacks" {
     const bishopAttacks = singleBishopAttacks(Square.D5, 0);
-    const rendered = renderBb(bishopAttacks);
+    const rendered = renderBitboard(bishopAttacks);
     std.debug.print("{s}\n", .{rendered});
     std.debug.print("{x:0>16}", .{bishopAttacks});
 }

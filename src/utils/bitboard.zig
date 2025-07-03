@@ -33,7 +33,7 @@ pub fn cbToBb(charboard: Charboard) Bitboard {
     return result;
 }
 
-pub fn renderBb(bitboard: Bitboard) [90]u8 {
+pub fn renderBitboard(bitboard: Bitboard) [90]u8 {
     const charboard = bbToCb(bitboard);
     var result: [9][10]u8 = undefined;
     for (0..8) |y| {
