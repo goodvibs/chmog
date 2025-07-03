@@ -54,22 +54,22 @@ pub fn multiKingAttacks(kings: Bitboard) Bitboard {
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     var attacks: Bitboard = 0;
-    for (0..@min(from.distanceFromLeft(), from.distanceFromTop()) + 1) |i| {
+    for (0..@min(from.distanceFromLeft(), from.distanceFromTop()) + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(9 * i);
         attacks |= mask;
         if (occupied & mask != 0) break;
     }
-    for (0..@min(from.distanceFromTop(), from.distanceFromRight()) + 1) |i| {
+    for (0..@min(from.distanceFromTop(), from.distanceFromRight()) + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(7 * i);
         attacks |= mask;
         if (occupied & mask != 0) break;
     }
-    for (0..@min(from.distanceFromRight(), from.distanceFromBottom()) + 1) |i| {
+    for (0..@min(from.distanceFromRight(), from.distanceFromBottom()) + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(9 * i);
         attacks |= mask;
         if (occupied & mask != 0) break;
     }
-    for (0..@min(from.distanceFromBottom(), from.distanceFromLeft()) + 1) |i| {
+    for (0..@min(from.distanceFromBottom(), from.distanceFromLeft()) + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(7 * i);
         attacks |= mask;
         if (occupied & mask != 0) break;
@@ -79,22 +79,22 @@ pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
 
 pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
     var attacks: Bitboard = 0;
-    for (0..from.distanceFromLeft() + 1) |i| {
+    for (0..from.distanceFromLeft() + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(i);
         attacks |= mask;
         if (occupied & mask != 0) break;
     }
-    for (0..from.distanceFromTop() + 1) |i| {
+    for (0..from.distanceFromTop() + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(8 * i);
         attacks |= mask;
         if (occupied & mask != 0) break;
     }
-    for (0..from.distanceFromRight() + 1) |i| {
+    for (0..from.distanceFromRight() + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(i);
         attacks |= mask;
         if (occupied & mask != 0) break;
     }
-    for (0..from.distanceFromBottom() + 1) |i| {
+    for (0..from.distanceFromBottom() + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(8 * i);
         attacks |= mask;
         if (occupied & mask != 0) break;
