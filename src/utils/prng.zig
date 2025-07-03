@@ -12,11 +12,9 @@ pub const Prng = struct {
         self.s ^= self.s >> 12;
         self.s ^= self.s << 25;
         self.s ^= self.s >> 27;
-        return self.s *% 2685821657736338717; // Use *% for wrapping multiply
+        return self.s *% 2685821657736338717;
     }
 
-    // Special generator for magic number generation
-    // Output values only have 1/8th of their bits set on average
     pub fn sparseRandBitboard(self: *Prng) Bitboard {
         return self.randBitboard() & self.randBitboard() & self.randBitboard();
     }
