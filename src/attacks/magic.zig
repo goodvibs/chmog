@@ -51,12 +51,12 @@ const BISHOP_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE,
 const ROOK_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE, rookRelevantMask)
     .init(manual.singleRookAttacks);
 
-pub fn singleBishopAttacks(from: Square) Bitboard {
-    return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from);
+pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
+    return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
-pub fn singleRookAttacks(from: Square) Bitboard {
-    return ROOK_MAGIC_ATTACKS_LOOKUP.get(from);
+pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
+    return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
 fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Square) Bitboard) type {
@@ -66,9 +66,9 @@ fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Squ
         attacks: [size]Bitboard,
         magicInfoLookup: [64]MagicInfo,
 
-        fn get(self: MagicAttacksLookup, square: Square) Bitboard {
+        fn get(self: MagicAttacksLookup, square: Square, occupied: Bitboard) Bitboard {
             const magicInfo = self.magicInfoLookup[square.int()];
-            return self.attacks[magicInfo.keyWithoutOffset(square.mask())];
+            return self.attacks[magicInfo.key(occupied)];
         }
 
         fn init(comptime computeAttacks: fn (Square, Bitboard) Bitboard) Self {
