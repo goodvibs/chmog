@@ -127,7 +127,7 @@ fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Squ
                     };
 
                     magicInfoLookup[i] = magicInfo;
-                    @memcpy(attacksTable[currentOffset .. currentOffset + numOccupiedMasks], attacksForSquare);
+                    @memcpy(attacksTable[currentOffset .. currentOffset + numOccupiedMasks], &attacksForSquare);
 
                     currentOffset += numOccupiedMasks;
                 }
