@@ -74,7 +74,7 @@ fn MagicAttacksLookup(comptime tableSize: usize, comptime relevantMaskLookup: fn
                 var table: [tableSize]Bitboard = undefined;
                 var magicInfoLookup: [64]MagicInfo = undefined;
 
-                var occupancy: [4096]Bitboard = undefined;
+                var blockersLookup: [4096]Bitboard = undefined;
                 var magicAttemptStamps: [4096]u32 = std.mem.zeroes([4096]u32);
                 var numMagicsTried: u32 = 0;
                 var attacksLookup: [4096]Bitboard = undefined;
@@ -91,7 +91,7 @@ fn MagicAttacksLookup(comptime tableSize: usize, comptime relevantMaskLookup: fn
                     var bitSubsetsIter = iterBitCombinations(relevantMask);
                     for (0..numUniqueBlockerMasks) |subsetIdx| {
                         const blockers = bitSubsetsIter.next() orelse unreachable;
-                        occupancy[subsetIdx] = blockers;
+                        blockersLookup[subsetIdx] = blockers;
                         attacksLookup[subsetIdx] = computeAttacks(s, blockers);
                     }
 
@@ -109,7 +109,7 @@ fn MagicAttacksLookup(comptime tableSize: usize, comptime relevantMaskLookup: fn
                         blockerMaskIndex = 0;
 
                         while (blockerMaskIndex < numUniqueBlockerMasks) : (blockerMaskIndex += 1) {
-                            const blockers = occupancy[blockerMaskIndex];
+                            const blockers = blockersLookup[blockerMaskIndex];
                             const indexWithoutOffset: u32 = @truncate((blockers *% magicNumber) >> shift);
                             const tableIndex = offset + indexWithoutOffset;
 
