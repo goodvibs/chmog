@@ -46,97 +46,102 @@ fn rookRelevantMask(from: Square) Bitboard {
 const BISHOP_ATTACK_TABLE_SIZE: usize = (4 << 6) + (44 << 5) + (12 << 7) + (4 << 9);
 const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
 
-const BISHOP_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE, bishopRelevantMask)
-    .init(manual.singleBishopAttacks);
-const ROOK_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE, rookRelevantMask)
-    .init(manual.singleRookAttacks);
+const BISHOP_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE, bishopRelevantMask, manual.singleBishopAttacks)
+    .init();
+// const ROOK_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE, rookRelevantMask)
+//     .init(manual.singleRookAttacks);
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
-pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
-    return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
-}
+// pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
+//     return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
+// }
 
-fn MagicAttacksLookup(comptime size: usize, comptime relevantMaskLookup: fn (Square) Bitboard) type {
+fn MagicAttacksLookup(comptime tableSize: usize, comptime relevantMaskLookup: fn (Square) Bitboard, comptime computeAttacks: fn (Square, Bitboard) Bitboard) type {
     return struct {
         const Self = @This();
 
-        attacks: [size]Bitboard,
+        attacks: [tableSize]Bitboard,
         magicInfoLookup: [64]MagicInfo,
 
-        fn get(self: MagicAttacksLookup, square: Square, occupied: Bitboard) Bitboard {
-            const magicInfo = self.magicInfoLookup[square.int()];
-            return self.attacks[magicInfo.key(occupied)];
-        }
-
-        fn init(comptime computeAttacks: fn (Square, Bitboard) Bitboard) Self {
+        fn init() Self {
             comptime {
-                @setEvalBranchQuota(9999999);
+                @setEvalBranchQuota(999999);
+                const seeds = [8]u64{ 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
 
-                var attacksTable: [size]Bitboard = undefined;
+                var table: [tableSize]Bitboard = undefined;
                 var magicInfoLookup: [64]MagicInfo = undefined;
-                var currentOffset = 0;
 
-                var prng = Prng.init(314592) catch unreachable;
-                for (0..64) |i| {
-                    const square = Square.fromInt(@as(u6, @intCast(i)));
-                    const relevantMask = relevantMaskLookup(square);
-                    const numRelevantSquares = @popCount(relevantMask);
-                    const shift = 64 - numRelevantSquares;
-                    const numOccupiedMasks = 1 << numRelevantSquares;
+                var occupancy: [4096]Bitboard = undefined;
+                var magicAttemptStamps: [4096]u32 = std.mem.zeroes([4096]u32);
+                var numMagicsTried: u32 = 0;
+                var attacksLookup: [4096]Bitboard = undefined;
+                var offset: u32 = 0;
 
-                    var occupiedPatternIterator = iterBitCombinations(relevantMask);
-                    var tempLookupForSquare: [numOccupiedMasks][2]Bitboard = undefined;
+                for (0..64) |square_idx| {
+                    const s = Square.fromInt(@truncate(square_idx));
 
-                    for (0..numOccupiedMasks) |j| {
-                        const occupiedMask = occupiedPatternIterator.next() orelse unreachable;
-                        const attacks = computeAttacks(square, occupiedMask);
-                        tempLookupForSquare[j] = [2]Bitboard{ occupiedMask, attacks };
+                    const relevantMask = relevantMaskLookup(s);
+                    const numRelevantBits = @popCount(relevantMask);
+                    const shift = 64 - numRelevantBits;
+                    const numUniqueBlockerMasks = 1 << numRelevantBits;
+
+                    var bitSubsetsIter = iterBitCombinations(relevantMask);
+                    for (0..numUniqueBlockerMasks) |subsetIdx| {
+                        const blockers = bitSubsetsIter.next() orelse unreachable;
+                        occupancy[subsetIdx] = blockers;
+                        attacksLookup[subsetIdx] = computeAttacks(s, blockers);
                     }
 
-                    var attacksForSquare: [numOccupiedMasks]Bitboard = undefined;
-                    var magicNumberForSquare: Bitboard = undefined;
+                    var rng = Prng.init(seeds[s.rank().int()]) catch unreachable;
+                    var magicNumber: Bitboard = undefined;
 
-                    while (true) {
-                        magicNumberForSquare = prng.sparseRandBitboard();
-                        if (@popCount((relevantMask *% magicNumberForSquare) >> 56) < 6) continue;
-                        @memset(&attacksForSquare, 0);
-                        var collision = false;
-
-                        for (0..numOccupiedMasks) |j| {
-                            const occupiedMask, const attacks = tempLookupForSquare[j];
-                            const index = (occupiedMask *% magicNumberForSquare) >> shift;
-                            if (attacksForSquare[index] != 0 and attacksForSquare[index] != attacks) {
-                                collision = true;
-                                break;
-                            } else {
-                                attacksForSquare[index] = attacks;
-                            }
+                    var blockerMaskIndex: usize = 0;
+                    while (blockerMaskIndex < numUniqueBlockerMasks) {
+                        magicNumber = 0;
+                        while (@popCount((magicNumber *% relevantMask) >> 56) < 6) {
+                            magicNumber = rng.sparseRandBitboard();
                         }
 
-                        if (!collision) break;
+                        numMagicsTried += 1;
+                        blockerMaskIndex = 0;
+
+                        while (blockerMaskIndex < numUniqueBlockerMasks) : (blockerMaskIndex += 1) {
+                            const blockers = occupancy[blockerMaskIndex];
+                            const indexWithoutOffset: u32 = @truncate((blockers *% magicNumber) >> shift);
+                            const tableIndex = offset + indexWithoutOffset;
+
+                            if (magicAttemptStamps[indexWithoutOffset] < numMagicsTried) {
+                                magicAttemptStamps[indexWithoutOffset] = numMagicsTried;
+                                table[tableIndex] = attacksLookup[blockerMaskIndex];
+                            } else if (table[tableIndex] != attacksLookup[blockerMaskIndex]) {
+                                break;
+                            }
+                        }
                     }
 
-                    const magicInfo = MagicInfo{
+                    magicInfoLookup[square_idx] = MagicInfo{
                         .relevantMask = relevantMask,
-                        .magicNumber = magicNumberForSquare,
-                        .shift = shift,
-                        .offset = currentOffset,
+                        .magicNumber = magicNumber,
+                        .shift = @truncate(shift),
+                        .offset = offset,
                     };
 
-                    magicInfoLookup[i] = magicInfo;
-                    @memcpy(attacksTable[currentOffset .. currentOffset + numOccupiedMasks], &attacksForSquare);
-
-                    currentOffset += numOccupiedMasks;
+                    offset += @truncate(numUniqueBlockerMasks);
                 }
 
                 return Self{
-                    .attacks = attacksTable,
+                    .attacks = table,
                     .magicInfoLookup = magicInfoLookup,
                 };
             }
+        }
+
+        fn get(self: *const Self, square: Square, occupied: Bitboard) Bitboard {
+            const magicInfo = self.magicInfoLookup[square.int()];
+            return self.attacks[magicInfo.key(occupied)];
         }
     };
 }
