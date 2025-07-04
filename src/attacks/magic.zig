@@ -125,7 +125,7 @@ fn MagicAttacksLookup(comptime tableSize: usize, comptime relevantMaskLookup: fn
                     magicInfoLookup[square_idx] = MagicInfo{
                         .relevantMask = relevantMask,
                         .magicNumber = magicNumber,
-                        .shift = @truncate(shift),
+                        .shift = shift,
                         .offset = offset,
                     };
 
