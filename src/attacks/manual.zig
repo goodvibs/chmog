@@ -53,62 +53,53 @@ pub fn multiKingAttacks(kings: Bitboard) Bitboard {
 }
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
+    const occupied_ = occupied & ~from.mask();
     var attacks: Bitboard = 0;
     for (0..@min(from.distanceFromLeft(), from.distanceFromTop()) + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(9 * i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     for (0..@min(from.distanceFromTop(), from.distanceFromRight()) + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(7 * i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     for (0..@min(from.distanceFromRight(), from.distanceFromBottom()) + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(9 * i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     for (0..@min(from.distanceFromBottom(), from.distanceFromLeft()) + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(7 * i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     return attacks;
 }
 
 pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
+    const occupied_ = occupied & ~from.mask();
     var attacks: Bitboard = 0;
     for (0..from.distanceFromLeft() + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     for (0..from.distanceFromTop() + @as(usize, 1)) |i| {
         const mask = from.mask() << @intCast(8 * i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     for (0..from.distanceFromRight() + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     for (0..from.distanceFromBottom() + @as(usize, 1)) |i| {
         const mask = from.mask() >> @intCast(8 * i);
         attacks |= mask;
-        if (occupied & mask != 0) break;
+        if (occupied_ & mask != 0) break;
     }
     return attacks;
-}
-
-const std = @import("std");
-const testing = @import("std").testing;
-const renderBitboard = @import("../mod.zig").utils.renderBitboard;
-
-test "attacks" {
-    const bishopAttacks = singleBishopAttacks(Square.D5, 0);
-    const rendered = renderBitboard(bishopAttacks);
-    std.debug.print("{s}\n", .{rendered});
-    std.debug.print("{x:0>16}", .{bishopAttacks});
 }
