@@ -141,15 +141,16 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
 
         fn initWithPrecomputed(comptime computeAttacks: fn (Square, Bitboard) Bitboard, comptime magicInfoLookup: [64]MagicInfo) Self {
             comptime {
-                @setEvalBranchQuota(10000000);
+                @setEvalBranchQuota(tableSize * 100);
                 var table: [tableSize]Bitboard = undefined;
 
                 for (0..64) |square_idx| {
                     const square = Square.fromInt(@truncate(square_idx));
                     const magicInfo = magicInfoLookup[square_idx];
-
+                    const numUniqueBlockerMasks = @as(u13, 1) << @truncate(@popCount(magicInfo.relevantMask));
                     var bitSubsetsIter = iterBitCombinations(magicInfo.relevantMask);
-                    while (bitSubsetsIter.next()) |blockers| {
+                    for (0..numUniqueBlockerMasks) |_| {
+                        const blockers = bitSubsetsIter.next() orelse unreachable;
                         table[magicInfo.key(blockers)] = computeAttacks(square, blockers);
                     }
                 }
