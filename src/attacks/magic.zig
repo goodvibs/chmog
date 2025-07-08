@@ -6,6 +6,8 @@ const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
 const iterBitCombinations = @import("../mod.zig").utils.iterBitCombinations;
 const manual = @import("../mod.zig").attacks.manual;
 const masks = @import("../mod.zig").masks;
+const BISHOP_MAGIC_INFO_LOOKUP = @import("generated/mod.zig").BISHOP_MAGIC_INFO_LOOKUP;
+const ROOK_MAGIC_INFO_LOOKUP = @import("generated/mod.zig").ROOK_MAGIC_INFO_LOOKUP;
 
 fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (Square) ?Square {
     return struct {
@@ -18,12 +20,12 @@ fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (S
     }.next_;
 }
 
-fn computeBishopRelevantMask(from_: [1]Square) Bitboard {
+pub fn computeBishopRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
     return from.diagonalsMask() & ~(from.mask() | masks.FILE_A | masks.FILE_H | masks.RANK_1 | masks.RANK_8);
 }
 
-fn computeRookRelevantMask(from_: [1]Square) Bitboard {
+pub fn computeRookRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
     const up = from.buildMask(0, stopIfMask(Square.up, masks.RANK_8));
     const down = from.buildMask(0, stopIfMask(Square.down, masks.RANK_1));
@@ -43,13 +45,14 @@ fn rookRelevantMask(from: Square) Bitboard {
     return ROOK_RELEVANT_MASK_LOOKUP.get([1]Square{from});
 }
 
-const BISHOP_ATTACK_TABLE_SIZE: usize = (4 << 6) + (44 << 5) + (12 << 7) + (4 << 9);
-const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
+pub const BISHOP_ATTACK_TABLE_SIZE: usize = (4 << 6) + (44 << 5) + (12 << 7) + (4 << 9);
+pub const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
 
-const BISHOP_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE, bishopRelevantMask, manual.singleBishopAttacks)
-    .init();
-// const ROOK_MAGIC_ATTACKS_LOOKUP = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE, rookRelevantMask)
-//     .init(manual.singleRookAttacks);
+pub const BishopMagicAttacksLookup = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE);
+pub const RookMagicAttacksLookup = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE);
+
+const BISHOP_MAGIC_ATTACKS_LOOKUP = BishopMagicAttacksLookup.initWithPrecomputed(manual.singleBishopAttacks, BISHOP_MAGIC_INFO_LOOKUP);
+// const ROOK_MAGIC_ATTACKS_LOOKUP = RookMagicAttacksLookup.init(manual.singleRookAttacks);
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
@@ -59,82 +62,100 @@ pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
 //     return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 // }
 
-fn MagicAttacksLookup(comptime tableSize: usize, comptime relevantMaskLookup: fn (Square) Bitboard, comptime computeAttacks: fn (Square, Bitboard) Bitboard) type {
+fn MagicAttacksLookup(comptime tableSize: usize) type {
     return struct {
         const Self = @This();
 
         attacks: [tableSize]Bitboard,
         magicInfoLookup: [64]MagicInfo,
 
-        fn init() Self {
+        fn init(comptime relevantMaskLookup: fn (Square) Bitboard, comptime computeAttacks: fn (Square, Bitboard) Bitboard) Self {
+            const seeds = [8]Bitboard{ 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
+
+            var table: [tableSize]Bitboard = undefined;
+            var magicInfoLookup: [64]MagicInfo = undefined;
+
+            var blockersLookup: [4096]Bitboard = undefined;
+            var magicAttemptStamps: [4096]u32 = std.mem.zeroes([4096]u32);
+            var numMagicsTried: u32 = 0;
+            var attacksLookup: [4096]Bitboard = undefined;
+            var offset: u32 = 0;
+
+            for (0..64) |square_idx| {
+                const s = Square.fromInt(@truncate(square_idx));
+
+                const relevantMask = relevantMaskLookup(s);
+                const numRelevantBits = @popCount(relevantMask);
+                const shift = 64 - numRelevantBits;
+                const numUniqueBlockerMasks = 1 << numRelevantBits;
+
+                var bitSubsetsIter = iterBitCombinations(relevantMask);
+                for (0..numUniqueBlockerMasks) |subsetIdx| {
+                    const blockers = bitSubsetsIter.next() orelse unreachable;
+                    blockersLookup[subsetIdx] = blockers;
+                    attacksLookup[subsetIdx] = computeAttacks(s, blockers);
+                }
+
+                var rng = Prng.init(seeds[s.rank().int()]) catch unreachable;
+                var magicNumber: Bitboard = undefined;
+
+                var blockerMaskIndex: usize = 0;
+                while (blockerMaskIndex < numUniqueBlockerMasks) {
+                    magicNumber = 0;
+                    while (@popCount((magicNumber *% relevantMask) >> 56) < 6) {
+                        magicNumber = rng.sparseRandBitboard();
+                    }
+
+                    numMagicsTried += 1;
+                    blockerMaskIndex = 0;
+
+                    while (blockerMaskIndex < numUniqueBlockerMasks) : (blockerMaskIndex += 1) {
+                        const blockers = blockersLookup[blockerMaskIndex];
+                        const indexWithoutOffset: u32 = @truncate((blockers *% magicNumber) >> shift);
+                        const tableIndex = offset + indexWithoutOffset;
+
+                        if (magicAttemptStamps[indexWithoutOffset] < numMagicsTried) {
+                            magicAttemptStamps[indexWithoutOffset] = numMagicsTried;
+                            table[tableIndex] = attacksLookup[blockerMaskIndex];
+                        } else if (table[tableIndex] != attacksLookup[blockerMaskIndex]) {
+                            break;
+                        }
+                    }
+                }
+
+                magicInfoLookup[square_idx] = MagicInfo{
+                    .relevantMask = relevantMask,
+                    .magicNumber = magicNumber,
+                    .shift = shift,
+                    .offset = offset,
+                };
+
+                offset += @truncate(numUniqueBlockerMasks);
+            }
+
+            return Self{
+                .attacks = table,
+                .magicInfoLookup = magicInfoLookup,
+            };
+        }
+
+        fn initWithPrecomputed(comptime computeAttacks: fn (Square, Bitboard) Bitboard, comptime magicInfos: [64]MagicInfo) Self {
             comptime {
-                @setEvalBranchQuota(999999);
-                const seeds = [8]u64{ 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
-
                 var table: [tableSize]Bitboard = undefined;
-                var magicInfoLookup: [64]MagicInfo = undefined;
-
-                var blockersLookup: [4096]Bitboard = undefined;
-                var magicAttemptStamps: [4096]u32 = std.mem.zeroes([4096]u32);
-                var numMagicsTried: u32 = 0;
-                var attacksLookup: [4096]Bitboard = undefined;
-                var offset: u32 = 0;
 
                 for (0..64) |square_idx| {
-                    const s = Square.fromInt(@truncate(square_idx));
+                    const square = Square.fromInt(@truncate(square_idx));
+                    const magicInfo = magicInfos[square_idx];
 
-                    const relevantMask = relevantMaskLookup(s);
-                    const numRelevantBits = @popCount(relevantMask);
-                    const shift = 64 - numRelevantBits;
-                    const numUniqueBlockerMasks = 1 << numRelevantBits;
-
-                    var bitSubsetsIter = iterBitCombinations(relevantMask);
-                    for (0..numUniqueBlockerMasks) |subsetIdx| {
-                        const blockers = bitSubsetsIter.next() orelse unreachable;
-                        blockersLookup[subsetIdx] = blockers;
-                        attacksLookup[subsetIdx] = computeAttacks(s, blockers);
+                    var bitSubsetsIter = iterBitCombinations(magicInfo.relevantMask);
+                    while (bitSubsetsIter.next()) |blockers| {
+                        table[magicInfo.key(blockers)] = computeAttacks(square, blockers);
                     }
-
-                    var rng = Prng.init(seeds[s.rank().int()]) catch unreachable;
-                    var magicNumber: Bitboard = undefined;
-
-                    var blockerMaskIndex: usize = 0;
-                    while (blockerMaskIndex < numUniqueBlockerMasks) {
-                        magicNumber = 0;
-                        while (@popCount((magicNumber *% relevantMask) >> 56) < 6) {
-                            magicNumber = rng.sparseRandBitboard();
-                        }
-
-                        numMagicsTried += 1;
-                        blockerMaskIndex = 0;
-
-                        while (blockerMaskIndex < numUniqueBlockerMasks) : (blockerMaskIndex += 1) {
-                            const blockers = blockersLookup[blockerMaskIndex];
-                            const indexWithoutOffset: u32 = @truncate((blockers *% magicNumber) >> shift);
-                            const tableIndex = offset + indexWithoutOffset;
-
-                            if (magicAttemptStamps[indexWithoutOffset] < numMagicsTried) {
-                                magicAttemptStamps[indexWithoutOffset] = numMagicsTried;
-                                table[tableIndex] = attacksLookup[blockerMaskIndex];
-                            } else if (table[tableIndex] != attacksLookup[blockerMaskIndex]) {
-                                break;
-                            }
-                        }
-                    }
-
-                    magicInfoLookup[square_idx] = MagicInfo{
-                        .relevantMask = relevantMask,
-                        .magicNumber = magicNumber,
-                        .shift = shift,
-                        .offset = offset,
-                    };
-
-                    offset += @truncate(numUniqueBlockerMasks);
                 }
 
                 return Self{
                     .attacks = table,
-                    .magicInfoLookup = magicInfoLookup,
+                    .magicInfoLookup = magicInfos,
                 };
             }
         }
