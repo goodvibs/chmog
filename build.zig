@@ -113,4 +113,28 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
     test_step.dependOn(&run_exe_unit_tests.step);
+
+    // Generation step
+    const generate_mod = b.createModule(.{
+        .root_source_file = b.path("tools/generateMagicLookups.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    generate_mod.addImport("chmog_lib", lib_mod);
+
+    const generate_exe = b.addExecutable(.{
+        .name = "generate-magic-lookups",
+        .root_module = generate_mod,
+    });
+
+    const generate_step = b.step("generate", "Generate magic lookup tables");
+
+    const bishop_cmd = b.addRunArtifact(generate_exe);
+    bishop_cmd.addArgs(&[_][]const u8{"bishop", "src/attacks/generated/bishopMagicInfoLookup.zig"});
+
+    const rook_cmd = b.addRunArtifact(generate_exe);
+    rook_cmd.addArgs(&[_][]const u8{"rook", "src/attacks/generated/rookMagicInfoLookup.zig"});
+
+    generate_step.dependOn(&bishop_cmd.step);
+    generate_step.dependOn(&rook_cmd.step);
 }

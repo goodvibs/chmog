@@ -69,7 +69,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
         attacks: [tableSize]Bitboard,
         magicInfoLookup: [64]MagicInfo,
 
-        fn init(comptime relevantMaskLookup: fn (Square) Bitboard, comptime computeAttacks: fn (Square, Bitboard) Bitboard) Self {
+        pub fn init(comptime relevantMaskLookup: fn (Square) Bitboard, comptime computeAttacks: fn (Square, Bitboard) Bitboard) Self {
             const seeds = [8]Bitboard{ 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
 
             var table: [tableSize]Bitboard = undefined;
@@ -85,9 +85,9 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
                 const s = Square.fromInt(@truncate(square_idx));
 
                 const relevantMask = relevantMaskLookup(s);
-                const numRelevantBits = @popCount(relevantMask);
-                const shift = 64 - numRelevantBits;
-                const numUniqueBlockerMasks = 1 << numRelevantBits;
+                const numRelevantBits: u4 = @truncate(@popCount(relevantMask));
+                const shift: u6 = @truncate(@as(u7, 64) - numRelevantBits);
+                const numUniqueBlockerMasks = @as(u13, 1) << numRelevantBits;
 
                 var bitSubsetsIter = iterBitCombinations(relevantMask);
                 for (0..numUniqueBlockerMasks) |subsetIdx| {
@@ -130,7 +130,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
                     .offset = offset,
                 };
 
-                offset += @truncate(numUniqueBlockerMasks);
+                offset += numUniqueBlockerMasks;
             }
 
             return Self{
@@ -139,13 +139,13 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
             };
         }
 
-        fn initWithPrecomputed(comptime computeAttacks: fn (Square, Bitboard) Bitboard, comptime magicInfos: [64]MagicInfo) Self {
+        fn initWithPrecomputed(comptime computeAttacks: fn (Square, Bitboard) Bitboard, comptime magicInfoLookup: [64]MagicInfo) Self {
             comptime {
                 var table: [tableSize]Bitboard = undefined;
 
                 for (0..64) |square_idx| {
                     const square = Square.fromInt(@truncate(square_idx));
-                    const magicInfo = magicInfos[square_idx];
+                    const magicInfo = magicInfoLookup[square_idx];
 
                     var bitSubsetsIter = iterBitCombinations(magicInfo.relevantMask);
                     while (bitSubsetsIter.next()) |blockers| {
@@ -155,7 +155,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
 
                 return Self{
                     .attacks = table,
-                    .magicInfoLookup = magicInfos,
+                    .magicInfoLookup = magicInfoLookup,
                 };
             }
         }
