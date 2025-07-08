@@ -52,15 +52,15 @@ pub const BishopMagicAttacksLookup = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE
 pub const RookMagicAttacksLookup = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE);
 
 const BISHOP_MAGIC_ATTACKS_LOOKUP = BishopMagicAttacksLookup.initWithPrecomputed(manual.singleBishopAttacks, BISHOP_MAGIC_INFO_LOOKUP);
-// const ROOK_MAGIC_ATTACKS_LOOKUP = RookMagicAttacksLookup.init(manual.singleRookAttacks);
+const ROOK_MAGIC_ATTACKS_LOOKUP = RookMagicAttacksLookup.initWithPrecomputed(manual.singleRookAttacks, ROOK_MAGIC_INFO_LOOKUP);
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
-// pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
-//     return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
-// }
+pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
+    return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
+}
 
 fn MagicAttacksLookup(comptime tableSize: usize) type {
     return struct {
@@ -141,6 +141,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
 
         fn initWithPrecomputed(comptime computeAttacks: fn (Square, Bitboard) Bitboard, comptime magicInfoLookup: [64]MagicInfo) Self {
             comptime {
+                @setEvalBranchQuota(10000000);
                 var table: [tableSize]Bitboard = undefined;
 
                 for (0..64) |square_idx| {
@@ -215,4 +216,52 @@ test "relevantMask" {
     try assertCountEquals(u7, &rookRelevantBits, 10, 36);
     try assertCountEquals(u7, &rookRelevantBits, 11, 24);
     try assertCountEquals(u7, &rookRelevantBits, 12, 4);
+}
+
+test "bishop attacks" {
+    for (0..64) |i| {
+        const s = Square.fromInt(@intCast(i));
+        const relevant_mask = bishopRelevantMask(s);
+        var iter = iterBitCombinations(relevant_mask);
+        while (iter.next()) |occupied| {
+            const expected = manual.singleBishopAttacks(s, occupied);
+            const actual = singleBishopAttacks(s, occupied);
+            try testing.expectEqual(expected, actual);
+        }
+    }
+}
+
+test "more bishop attacks" {
+    const occupied = Square.C6.mask() | Square.D5.mask() | Square.E4.mask() | Square.F8.mask() | Square.C5.mask();
+    const from = Square.E4;
+    const expected = manual.singleBishopAttacks(from, occupied);
+    const actual = singleBishopAttacks(from, occupied);
+    // std.debug.print("occupied:\n {s}\n", .{renderBitboard(occupied)});
+    // std.debug.print("expected:\n {s}\n", .{renderBitboard(expected)});
+    // std.debug.print("actual:\n {s}\n", .{renderBitboard(actual)});
+    try testing.expectEqual(expected, actual);
+}
+
+test "rook attacks" {
+    for (0..64) |i| {
+        const s = Square.fromInt(@intCast(i));
+        const relevant_mask = rookRelevantMask(s);
+        var iter = iterBitCombinations(relevant_mask);
+        while (iter.next()) |occupied| {
+            const expected = manual.singleRookAttacks(s, occupied);
+            const actual = singleRookAttacks(s, occupied);
+            try testing.expectEqual(expected, actual);
+        }
+    }
+}
+
+test "more rook attacks" {
+    const occupied = Square.C6.mask() | Square.D5.mask() | Square.E4.mask() | Square.F8.mask() | Square.C5.mask() | Square.B4.mask() | Square.H4.mask();
+    const from = Square.E4;
+    const expected = manual.singleRookAttacks(from, occupied);
+    const actual = singleRookAttacks(from, occupied);
+    // std.debug.print("occupied:\n {s}\n", .{renderBitboard(occupied)});
+    // std.debug.print("expected:\n {s}\n", .{renderBitboard(expected)});
+    // std.debug.print("actual:\n {s}\n", .{renderBitboard(actual)});
+    try testing.expectEqual(expected, actual);
 }
