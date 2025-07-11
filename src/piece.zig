@@ -1,4 +1,4 @@
-const Piece = enum(u3) {
+pub const Piece = enum(u3) {
     Null = 0,
     Pawn = 1,
     Knight = 2,
