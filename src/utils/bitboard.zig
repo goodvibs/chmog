@@ -2,6 +2,9 @@ const std = @import("std");
 
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
+const TwoSquaresToBitboard = @import("..mod.zig").TwoSquaresToBitboard;
+const QueenlikeMoveDirection = @import("../mod.zig").utils.QueenlikeMoveDirection;
+const PieceMoveDirection = @import("../mod.zig").utils.PieceMoveDirection;
 
 pub const Charboard = [8][8]u8;
 
@@ -49,6 +52,54 @@ pub fn renderBitboard(bitboard: Bitboard) [90]u8 {
     result[8][0] = ' ';
     result[8][9] = '\n';
     return @bitCast(result);
+}
+
+fn computeEdgeToEdge(squares: [2]Square) Bitboard {
+    const square1 = squares[0];
+    const square2 = squares[1];
+    if (square1 == square2 or !square1.isOnSameLineAs(square2)) return 0 else {
+        const direction = @as(QueenlikeMoveDirection, PieceMoveDirection.lookup(square1, square2) orelse unreachable);
+        var current = square1;
+        var mask = current.mask();
+        while (current.neighborInDirection(direction)) |next| {
+            mask |= next.mask();
+            current = next;
+        }
+        var current2 = square1;
+        while (current2.neighborInDirection(direction.opposite())) |next| {
+            mask |= next.mask();
+            current2 = next;
+        }
+        return mask;
+    }
+}
+
+const EDGE_TO_EDGE_LOOKUP = TwoSquaresToBitboard.init(edgeToEdge);
+
+pub fn edgeToEdge(square1: Square, square2: Square) Bitboard {
+    EDGE_TO_EDGE_LOOKUP.get([2]Square{ square1, square2 });
+}
+
+fn computeBetween(squares: [2]Square) Bitboard {
+    const square1 = squares[0];
+    const square2 = squares[1];
+    if (square1 == square2 or !square1.isOnSameLineAs(square2)) return 0 else {
+        const direction = @as(QueenlikeMoveDirection, PieceMoveDirection.lookup(square1, square2) orelse unreachable);
+        var current = square1;
+        var mask = current.mask();
+        while (true) {
+            current = current.next(direction) orelse unreachable;
+            if (current == square2) return mask else {
+                mask |= current.mask();
+            }
+        }
+    }
+}
+
+const BETWEEN_LOOKUP = TwoSquaresToBitboard.init(computeBetween);
+
+pub fn between(square1: Square, square2: Square) Bitboard {
+    BETWEEN_LOOKUP.get([2]Square{ square1, square2 });
 }
 
 pub fn iterSetBits(bitboard: Bitboard) MaskBitsIterator {
