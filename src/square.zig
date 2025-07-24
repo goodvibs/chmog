@@ -2,6 +2,7 @@ const Bitboard = @import("mod.zig").Bitboard;
 const SquareToBitboard = @import("mod.zig").utils.SquareToBitboard;
 const Rank = @import("mod.zig").Rank;
 const File = @import("mod.zig").File;
+const QueenlikeMoveDirection = @import("mod.zig").utils.QueenlikeMoveDirection;
 
 pub const Square = enum(u6) {
     A8 = 0,
@@ -165,6 +166,19 @@ pub const Square = enum(u6) {
         return Square.fromInt(self.int() + 9);
     }
 
+    pub fn neighborInDirection(self: Square, direction: QueenlikeMoveDirection) ?Square {
+        return switch (direction) {
+            .Up => self.up(),
+            .Down => self.down(),
+            .Left => self.left(),
+            .Right => self.right(),
+            .UpLeft => self.upLeft(),
+            .UpRight => self.upRight(),
+            .DownLeft => self.downLeft(),
+            .DownRight => self.downRight(),
+        };
+    }
+
     pub fn name(self: Square) [2]u8 {
         return NAMES[self.int()];
     }
@@ -180,6 +194,19 @@ pub const Square = enum(u6) {
 
     pub fn orthogonalsMask(self: Square) Bitboard {
         return ORTHOGONALS_MASK_LOOKUP.get([1]Square{self});
+    }
+
+    pub fn isOnSameOrthogonalAs(self: Square, other: Square) bool {
+        return self.orthogonalsMask() & other.mask() != 0;
+    }
+
+    pub fn isOnSameDiagonalAs(self: Square, other: Square) bool {
+        return self.diagonalsMask() & other.mask() != 0;
+    }
+
+    pub fn isOnSameLineAs(self: Square, other: Square) bool {
+        const lines = self.diagonalsMask() | self.orthogonalsMask();
+        return lines & other.mask() != 0;
     }
 };
 
