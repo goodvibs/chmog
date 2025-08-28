@@ -6,6 +6,9 @@ pub const Piece = @import("piece.zig").Piece;
 pub const PromotionPiece = @import("piece.zig").PromotionPiece;
 pub const Position = @import("position.zig").Position;
 pub const PositionContext = @import("positionContext.zig").PositionContext;
+pub const GameResult = @import("gameResult.zig").GameResult;
+pub const DecisiveResultReason = @import("gameResult.zig").DecisiveResultReason;
+pub const DrawResultReason = @import("gameResult.zig").DrawResultReason;
 pub const Rank = @import("rank.zig").Rank;
 pub const Square = @import("square.zig").Square;
 
