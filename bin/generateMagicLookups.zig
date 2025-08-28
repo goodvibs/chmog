@@ -1,13 +1,13 @@
 const std = @import("std");
-const chmog_lib = @import("chmog_lib");
-const Square = chmog_lib.Square;
-const Bitboard = chmog_lib.Bitboard;
-const MagicInfo = chmog_lib.attacks.magic.MagicInfo;
-const BishopMagicAttacksLookup = chmog_lib.attacks.magic.BishopMagicAttacksLookup;
-const RookMagicAttacksLookup = chmog_lib.attacks.magic.RookMagicAttacksLookup;
-const manual = chmog_lib.attacks.manual;
-const computeBishopRelevantMask = chmog_lib.attacks.magic.computeBishopRelevantMask;
-const computeRookRelevantMask = chmog_lib.attacks.magic.computeRookRelevantMask;
+const chmog = @import("chmog");
+const Square = chmog.Square;
+const Bitboard = chmog.Bitboard;
+const MagicInfo = chmog.attacks.magic.MagicInfo;
+const BishopMagicAttacksLookup = chmog.attacks.magic.BishopMagicAttacksLookup;
+const RookMagicAttacksLookup = chmog.attacks.magic.RookMagicAttacksLookup;
+const manual = chmog.attacks.manual;
+const computeBishopRelevantMask = chmog.attacks.magic.computeBishopRelevantMask;
+const computeRookRelevantMask = chmog.attacks.magic.computeRookRelevantMask;
 
 fn bishopRelevantMask(s: Square) Bitboard {
     return computeBishopRelevantMask([1]Square{s});
