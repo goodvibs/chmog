@@ -1,12 +1,13 @@
-pub usingnamespace @import("board.zig");
-pub usingnamespace @import("castlingRights.zig");
-pub usingnamespace @import("color.zig");
-pub usingnamespace @import("file.zig");
-pub usingnamespace @import("piece.zig");
-pub usingnamespace @import("position.zig");
-pub usingnamespace @import("positionContext.zig");
-pub usingnamespace @import("rank.zig");
-pub usingnamespace @import("square.zig");
+pub const Board = @import("board.zig").Board;
+pub const CastlingRights = @import("castlingRights.zig").CastlingRights;
+pub const Color = @import("color.zig").Color;
+pub const File = @import("file.zig").File;
+pub const Piece = @import("piece.zig").Piece;
+pub const PromotionPiece = @import("piece.zig").PromotionPiece;
+pub const Position = @import("position.zig").Position;
+pub const PositionContext = @import("positionContext.zig").PositionContext;
+pub const Rank = @import("rank.zig").Rank;
+pub const Square = @import("square.zig").Square;
 
 pub const attacks = @import("attacks/mod.zig");
 pub const masks = @import("masks.zig");
@@ -15,3 +16,9 @@ pub const utils = @import("utils/mod.zig");
 pub const zobrist = @import("zobrist.zig");
 
 pub const Bitboard = u64;
+
+const std = @import("std");
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}

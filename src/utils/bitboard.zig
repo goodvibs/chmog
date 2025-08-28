@@ -2,7 +2,7 @@ const std = @import("std");
 
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
-const TwoSquaresToBitboard = @import("..mod.zig").TwoSquaresToBitboard;
+const TwoSquaresToBitboard = @import("../mod.zig").utils.TwoSquaresToBitboard;
 const QueenlikeMoveDirection = @import("../mod.zig").utils.QueenlikeMoveDirection;
 const PieceMoveDirection = @import("../mod.zig").utils.PieceMoveDirection;
 
@@ -74,7 +74,7 @@ fn computeEdgeToEdge(squares: [2]Square) Bitboard {
     }
 }
 
-const EDGE_TO_EDGE_LOOKUP = TwoSquaresToBitboard.init(edgeToEdge);
+const EDGE_TO_EDGE_LOOKUP = TwoSquaresToBitboard.init(computeEdgeToEdge);
 
 pub fn edgeToEdge(square1: Square, square2: Square) Bitboard {
     EDGE_TO_EDGE_LOOKUP.get([2]Square{ square1, square2 });

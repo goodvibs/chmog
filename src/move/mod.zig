@@ -1,2 +1,2 @@
-pub usingnamespace @import("move.zig");
-pub usingnamespace @import("flag.zig");
+pub const Move = @import("move.zig").Move;
+pub const MoveFlag = @import("flag.zig").MoveFlag;

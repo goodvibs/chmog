@@ -4,7 +4,7 @@ const Piece = @import("./mod.zig").Piece;
 const StaleableHash = @import("./mod.zig").zobrist.StaleableHash;
 const File = @import("./mod.zig").File;
 
-const PositionContext = struct {
+pub const PositionContext = struct {
     pinned: Bitboard,
     checkers: Bitboard,
     zobrist_hash: StaleableHash,
