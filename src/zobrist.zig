@@ -10,9 +10,9 @@ const Piece = @import("./mod.zig").Piece;
 const SquaresMappingLookup = @import("./mod.zig").utils.SquaresMappingLookup;
 const iterSetBits = @import("./mod.zig").utils.iterSetBits;
 
-pub const StaleableHash = union {
-    upToDate: Bitboard,
-    stale: Bitboard,
+pub const StaleableHash = enum(Bitboard) {
+    upToDate,
+    stale,
 
     pub fn blankStale() StaleableHash {
         return StaleableHash{
