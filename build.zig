@@ -25,27 +25,45 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
 
-    const gen_magic_mod = b.createModule(.{
+    const genZobristMod = b.createModule(.{
+        .root_source_file = b.path("bin/generateZobristKeys.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const gen_zobrist_exec = b.addExecutable(.{
+        .name = "gen-zobrist",
+        .root_module = genZobristMod,
+    });
+    b.installArtifact(gen_zobrist_exec);
+
+    const genZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
+
+    const genZobristRun = b.addRunArtifact(gen_zobrist_exec);
+
+    genZobristStep.dependOn(&genZobristRun.step);
+
+    const genMagicMod = b.createModule(.{
         .root_source_file = b.path("bin/generateMagicLookups.zig"),
         .target = target,
         .optimize = optimize,
     });
-    gen_magic_mod.addImport("chmog", lib_mod);
+    genMagicMod.addImport("chmog", lib_mod);
 
-    const gen_magic_exec = b.addExecutable(.{
+    const genMagicExec = b.addExecutable(.{
         .name = "gen-magic",
-        .root_module = gen_magic_mod,
+        .root_module = genMagicMod,
     });
-    b.installArtifact(gen_magic_exec);
+    b.installArtifact(genMagicExec);
 
-    const generate_step = b.step("gen-magic", "Generate magic lookup tables");
+    const genMagicStep = b.step("gen-magic", "Generate magic lookup tables");
 
-    const genBishopMagicLookup = b.addRunArtifact(gen_magic_exec);
-    genBishopMagicLookup.addArg("--bishop-only");
+    const genBishopMagicLookupRun = b.addRunArtifact(genMagicExec);
+    genBishopMagicLookupRun.addArg("--bishop-only");
 
-    const genRookMagicLookup = b.addRunArtifact(gen_magic_exec);
-    genRookMagicLookup.addArg("--rook-only");
+    const genRookMagicLookupRun = b.addRunArtifact(genMagicExec);
+    genRookMagicLookupRun.addArg("--rook-only");
 
-    generate_step.dependOn(&genBishopMagicLookup.step);
-    generate_step.dependOn(&genRookMagicLookup.step);
+    genMagicStep.dependOn(&genBishopMagicLookupRun.step);
+    genMagicStep.dependOn(&genRookMagicLookupRun.step);
 }
