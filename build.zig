@@ -36,6 +36,7 @@ pub fn build(b: *std.Build) void {
         .name = "gen-magic",
         .root_module = gen_magic_mod,
     });
+    b.installArtifact(gen_magic_exec);
 
     const generate_step = b.step("gen-magic", "Generate magic lookup tables");
 
