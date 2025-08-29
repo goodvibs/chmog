@@ -22,7 +22,7 @@ const GenerateOptions = struct {
     rook: bool,
 };
 
-fn parseArgs(args: [][:0]const u8) !GenerateOptions {
+fn parseArgs(args: [][:0]u8) !GenerateOptions {
     if (args.len == 1) {
         return GenerateOptions{ .bishop = true, .rook = true };
     } else if (args.len == 2) {
@@ -45,7 +45,7 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    const options = try parseArgs(args) catch |err| {
+    const options = parseArgs(args) catch |err| {
         std.debug.print("Error: {s}\n", .{@errorName(err)});
         std.debug.print("Usage: {s} <Optional[--bishop-only|--rook-only]>\n", .{args[0]});
         return std.process.exit(1);
