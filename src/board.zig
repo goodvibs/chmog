@@ -5,7 +5,7 @@ const Piece = @import("./mod.zig").Piece;
 const Color = @import("./mod.zig").Color;
 const Square = @import("./mod.zig").Square;
 const ZobristHash = @import("./mod.zig").zobrist.ZobristHash;
-const zobristKeyForPlacedPiece = @import("./mod.zig").zobrist.zobristKeyForPlacedPiece;
+const zobristKeyForPieceSquare = @import("./mod.zig").zobrist.zobristKeyForPieceSquare;
 
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
@@ -37,7 +37,7 @@ pub const Board = struct {
             },
             .partialZobristHash = ZobristHash.blankStale(),
         };
-        res.partialZobristHash = res.calculateZobristHash();
+        res.partialZobristHash = ZobristHash.computeForBoard(&res);
         return res;
     }
 
@@ -49,14 +49,17 @@ pub const Board = struct {
         return self.colorMasks[@as(usize, color.int())];
     }
 
-    pub fn putColor(self: *Board, color: Color, at: Square) void {
-        self.colorMasks[@as(usize, color.int())] |= at.mask();
-        self.partialZobristHash.markStale();
+    pub fn xorColor(self: *Board, color: Color, mask: Bitboard) void {
+        self.colorMasks[@as(usize, color.int())] ^= mask;
     }
 
-    pub fn putPiece(self: *Board, piece: Piece, at: Square) void {
-        self.pieceMasks[@as(usize, piece.int())] |= at.mask();
-        const key = zobristKeyForPlacedPiece(piece, at);
+    pub fn togglePiece(self: *Board, piece: Piece, at: Square) void {
+        self.pieceMasks[@as(usize, piece.int())] ^= at.mask();
+        const key = zobristKeyForPieceSquare(piece, at);
         self.partialZobristHash.xor(key);
+    }
+
+    pub fn xorOccupied(self: *Board, mask: Bitboard) void {
+        self.pieceMasks[0] ^= mask;
     }
 };
