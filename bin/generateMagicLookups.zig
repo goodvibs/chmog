@@ -17,42 +17,61 @@ fn rookRelevantMask(s: Square) Bitboard {
     return computeRookRelevantMask([1]Square{s});
 }
 
+const GenerateOptions = struct {
+    bishop: bool,
+    rook: bool,
+};
+
+fn parseArgs(args: [][:0]const u8) !GenerateOptions {
+    if (args.len == 1) {
+        return GenerateOptions{ .bishop = true, .rook = true };
+    } else if (args.len == 2) {
+        const flag = args[1];
+        if (std.mem.eql(u8, flag, "--bishop-only")) {
+            return GenerateOptions{ .bishop = true, .rook = false };
+        } else if (std.mem.eql(u8, flag, "--rook-only")) {
+            return GenerateOptions{ .bishop = false, .rook = true };
+        } else {
+            return error.InvalidArgument;
+        }
+    } else {
+        return error.TooManyArguments;
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    if (args.len < 2) {
-        std.debug.print("Usage: {s} <bishop|rook>\n", .{args[0]});
+    const options = try parseArgs(args) catch |err| {
+        std.debug.print("Error: {s}\n", .{@errorName(err)});
+        std.debug.print("Usage: {s} <Optional[--bishop-only|--rook-only]>\n", .{args[0]});
         return std.process.exit(1);
-    }
+    };
 
-    const piece_type = args[1];
-
-    if (std.mem.eql(u8, piece_type, "bishop")) {
+    if (options.bishop) {
         const lookup = BishopMagicAttacksLookup.init(bishopRelevantMask, manual.singleBishopAttacks);
         try writeBinaryData("bishopMagicInfoLookup.bin", lookup.magicInfoLookup);
-    } else if (std.mem.eql(u8, piece_type, "rook")) {
+    }
+    if (options.rook) {
         const lookup = RookMagicAttacksLookup.init(rookRelevantMask, manual.singleRookAttacks);
         try writeBinaryData("rookMagicInfoLookup.bin", lookup.magicInfoLookup);
-    } else {
-        std.debug.print("Unknown piece type: {s}\n", .{piece_type});
-        return std.process.exit(1);
     }
 }
 
-fn writeBinaryData(output_path: []const u8, magic_info_lookup: [64]MagicInfo) !void {
+fn writeBinaryData(asFilename: []const u8, magicInfoLookup: [64]MagicInfo) !void {
     try std.fs.cwd().makePath("data");
 
-    const full_path = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{output_path});
-    defer std.heap.page_allocator.free(full_path);
+    const completeRelativePath = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{asFilename});
+    defer std.heap.page_allocator.free(completeRelativePath);
 
-    var file = try std.fs.cwd().createFile(full_path, .{});
+    var file = try std.fs.cwd().createFile(completeRelativePath, .{});
     defer file.close();
 
-    const bytes = std.mem.sliceAsBytes(magic_info_lookup[0..]);
+    const bytes = std.mem.sliceAsBytes(magicInfoLookup[0..]);
     try file.writeAll(bytes);
 
-    std.debug.print("Generated {} bytes of magic data to {s}\n", .{ bytes.len, full_path });
+    std.debug.print("Generated {} bytes of magic data to {s}\n", .{ bytes.len, completeRelativePath });
 }
