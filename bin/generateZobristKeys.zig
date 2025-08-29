@@ -1,4 +1,5 @@
 const std = @import("std");
+const NUM_KEYS = @import("chmog").zobrist.NUM_KEYS;
 
 const GenerateOptions = struct {
     seed: u64,
@@ -86,9 +87,9 @@ pub fn main() !void {
     try writeBinaryData("zobristKeys.bin", zobrist_hashes);
 }
 
-fn generateHashes(comptime RngType: type, seed: u64) [781]u64 {
+fn generateHashes(comptime RngType: type, seed: u64) [NUM_KEYS]u64 {
     var rng = RngType.init(seed);
-    var hashes: [781]u64 = undefined;
+    var hashes: [NUM_KEYS]u64 = undefined;
 
     for (&hashes) |*hash| {
         hash.* = rng.random().int(u64);
@@ -97,7 +98,7 @@ fn generateHashes(comptime RngType: type, seed: u64) [781]u64 {
     return hashes;
 }
 
-fn writeBinaryData(asFilename: []const u8, zobrist_hashes: [781]u64) !void {
+fn writeBinaryData(asFilename: []const u8, zobrist_hashes: [NUM_KEYS]u64) !void {
     try std.fs.cwd().makePath("data");
 
     const completeRelativePath = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{asFilename});
