@@ -54,15 +54,15 @@ pub fn main() !void {
 
     if (options.bishop) {
         const lookup = BishopMagicAttacksLookup.init(bishopRelevantMask, manual.singleBishopAttacks);
-        try writeBinaryData("bishopMagicInfoLookup.bin", lookup.magicInfoLookup);
+        try writeBinaryData("bishopMagicAttacksLookup.bin", lookup);
     }
     if (options.rook) {
         const lookup = RookMagicAttacksLookup.init(rookRelevantMask, manual.singleRookAttacks);
-        try writeBinaryData("rookMagicInfoLookup.bin", lookup.magicInfoLookup);
+        try writeBinaryData("rookMagicAttacksLookup.bin", lookup);
     }
 }
 
-fn writeBinaryData(asFilename: []const u8, magicInfoLookup: [64]MagicInfo) !void {
+fn writeBinaryData(asFilename: []const u8, stuff: anytype) !void {
     try std.fs.cwd().makePath("data");
 
     const completeRelativePath = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{asFilename});
@@ -71,8 +71,8 @@ fn writeBinaryData(asFilename: []const u8, magicInfoLookup: [64]MagicInfo) !void
     var file = try std.fs.cwd().createFile(completeRelativePath, .{});
     defer file.close();
 
-    const bytes = std.mem.sliceAsBytes(magicInfoLookup[0..]);
+    const bytes = std.mem.asBytes(&stuff);
     try file.writeAll(bytes);
 
-    std.debug.print("Generated {} bytes of magic data to {s}\n", .{ bytes.len, completeRelativePath });
+    std.debug.print("Wrote {} bytes to {s}\n", .{ bytes.len, completeRelativePath });
 }
