@@ -4,19 +4,19 @@ const masks = @import("./mod.zig").masks;
 const Piece = @import("./mod.zig").Piece;
 const Color = @import("./mod.zig").Color;
 const Square = @import("./mod.zig").Square;
-const StaleableHash = @import("./mod.zig").zobrist.StaleableHash;
+const ZobristHash = @import("./mod.zig").zobrist.ZobristHash;
 const zobristKeyForPlacedPiece = @import("./mod.zig").zobrist.zobristKeyForPlacedPiece;
 
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
     colorMasks: [2]Bitboard,
-    partialZobristHash: StaleableHash,
+    partialZobristHash: ZobristHash,
 
     pub fn blank() Board {
         return Board{
             .pieceMasks = std.mem.zeroes([7]Bitboard),
             .colorMasks = std.mem.zeroes([2]Bitboard),
-            .partialZobristHash = StaleableHash.blankStale(),
+            .partialZobristHash = ZobristHash.blankStale(),
         };
     }
 
@@ -35,7 +35,7 @@ pub const Board = struct {
                 masks.STARTING_WHITE,
                 masks.STARTING_BLACK,
             },
-            .partialZobristHash = StaleableHash.blankStale(),
+            .partialZobristHash = ZobristHash.blankStale(),
         };
         res.partialZobristHash = res.calculateZobristHash();
         return res;

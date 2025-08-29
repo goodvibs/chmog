@@ -10,29 +10,25 @@ const Piece = @import("./mod.zig").Piece;
 const SquaresMappingLookup = @import("./mod.zig").utils.SquaresMappingLookup;
 const iterSetBits = @import("./mod.zig").utils.iterSetBits;
 
-pub const StaleableHash = enum(Bitboard) {
-    upToDate,
-    stale,
+pub const ZobristHash = struct {
+    value: Bitboard,
+    isStale: bool,
 
-    pub fn blankStale() StaleableHash {
-        return StaleableHash{
-            .stale = 0,
-        };
+    pub fn markStale(self: *ZobristHash) void {
+        self.isStale = true;
     }
 
-    pub fn xor(self: *StaleableHash, bitboard: Bitboard) void {
+    pub fn markUpdated(self: *ZobristHash) void {
+        self.isStale = false;
+    }
+
+    pub fn xor(self: *ZobristHash, key: Bitboard) void {
+        self.value ^= key;
         self.markStale();
-        self.stale ^= bitboard;
     }
 
-    pub fn markStale(self: *StaleableHash) void {
-        if (self.* == .stale) return;
-        self.* = .{ .stale = self.upToDate };
-    }
-
-    pub fn markUpToDate(self: *StaleableHash) void {
-        if (self.* == .upToDate) return;
-        self.* = .{ .upToDate = self.stale };
+    pub fn blankStale() ZobristHash {
+        return ZobristHash{ .value = 0, .isStale = true };
     }
 };
 
@@ -125,7 +121,7 @@ pub fn zobristHashForBoard(board: Board) Bitboard {
     for (1..8) |i| {
         const piece = Piece.fromInt(@truncate(i)) catch unreachable;
         for (0..2) |j| {
-            const color = Color.fromInt(@truncate(i));
+            const color = Color.fromInt(@truncate(j));
             const mask = board.pieceMasks[i] & board.colorMasks[j];
             const hashForPieceType = zobristHashForPieceType(mask, piece, color);
             hash ^= hashForPieceType;
