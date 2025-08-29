@@ -16,7 +16,7 @@ pub const attacks = @import("attacks/mod.zig");
 pub const masks = @import("masks.zig");
 pub const move = @import("move/mod.zig");
 pub const utils = @import("utils/mod.zig");
-pub const zobrist = @import("zobrist.zig");
+pub const zobrist = @import("zobrist/mod.zig");
 
 pub const Bitboard = u64;
 
