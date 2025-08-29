@@ -25,25 +25,25 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
 
-    const generate_mod = b.createModule(.{
+    const gen_magic_mod = b.createModule(.{
         .root_source_file = b.path("bin/generateMagicLookups.zig"),
         .target = target,
         .optimize = optimize,
     });
-    generate_mod.addImport("chmog", lib_mod);
+    gen_magic_mod.addImport("chmog", lib_mod);
 
-    const generate_exe = b.addExecutable(.{
-        .name = "generate-magic-lookups",
-        .root_module = generate_mod,
+    const gen_magic_exec = b.addExecutable(.{
+        .name = "gen-magic",
+        .root_module = gen_magic_mod,
     });
 
-    const generate_step = b.step("generate", "Generate magic lookup tables");
+    const generate_step = b.step("gen-magic", "Generate magic lookup tables");
 
-    const bishop_cmd = b.addRunArtifact(generate_exe);
-    bishop_cmd.addArgs(&[_][]const u8{ "bishop", "src/attacks/generated/bishopMagicInfoLookup.zig" });
+    const bishop_cmd = b.addRunArtifact(gen_magic_exec);
+    bishop_cmd.addArg("bishop");
 
-    const rook_cmd = b.addRunArtifact(generate_exe);
-    rook_cmd.addArgs(&[_][]const u8{ "rook", "src/attacks/generated/rookMagicInfoLookup.zig" });
+    const rook_cmd = b.addRunArtifact(gen_magic_exec);
+    rook_cmd.addArg("rook");
 
     generate_step.dependOn(&bishop_cmd.step);
     generate_step.dependOn(&rook_cmd.step);

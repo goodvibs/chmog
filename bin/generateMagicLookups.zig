@@ -23,50 +23,36 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    if (args.len < 3) {
-        std.debug.print("Usage: {s} <bishop|rook> <output_file>\n", .{args[0]});
+    if (args.len < 2) {
+        std.debug.print("Usage: {s} <bishop|rook>\n", .{args[0]});
         return std.process.exit(1);
     }
 
     const piece_type = args[1];
-    const output_path = args[2];
-
-    var file = try std.fs.cwd().createFile(output_path, .{});
-    defer file.close();
-    const writer = file.writer();
-
-    try writer.print("const std = @import(\"std\");\n\nconst MagicInfo = @import(\"../../mod.zig\").attacks.magic.MagicInfo;\n\n", .{});
 
     if (std.mem.eql(u8, piece_type, "bishop")) {
-        try writer.print("pub const BISHOP_MAGIC_INFO_LOOKUP = ", .{});
-        try generate(writer, BishopMagicAttacksLookup, bishopRelevantMask, manual.singleBishopAttacks);
-        try writer.print(";", .{});
+        const lookup = BishopMagicAttacksLookup.init(bishopRelevantMask, manual.singleBishopAttacks);
+        try writeBinaryData("bishopMagicInfoLookup.bin", lookup.magicInfoLookup);
     } else if (std.mem.eql(u8, piece_type, "rook")) {
-        try writer.print("pub const ROOK_MAGIC_INFO_LOOKUP = ", .{});
-        try generate(writer, RookMagicAttacksLookup, rookRelevantMask, manual.singleRookAttacks);
-        try writer.print(";", .{});
+        const lookup = RookMagicAttacksLookup.init(rookRelevantMask, manual.singleRookAttacks);
+        try writeBinaryData("rookMagicInfoLookup.bin", lookup.magicInfoLookup);
     } else {
-        std.debug.print("Unknown piece type: {s}", .{piece_type});
+        std.debug.print("Unknown piece type: {s}\n", .{piece_type});
         return std.process.exit(1);
     }
 }
 
-fn generate(
-    writer: anytype,
-    comptime MagicAttacksLookup: type,
-    comptime relevantMaskLookup: fn (Square) Bitboard,
-    comptime computeAttacks: fn (Square, Bitboard) Bitboard,
-) !void {
-    const magicInfoLookup = MagicAttacksLookup.init(relevantMaskLookup, computeAttacks).magicInfoLookup;
+fn writeBinaryData(output_path: []const u8, magic_info_lookup: [64]MagicInfo) !void {
+    try std.fs.cwd().makePath("data");
 
-    try writer.print("[64]MagicInfo{{", .{});
-    for (magicInfoLookup) |magicInfo| {
-        try writer.print("    .{{ .relevantMask = {}, .magicNumber = {}, .shift = {}, .offset = {} }},", .{
-            magicInfo.relevantMask,
-            magicInfo.magicNumber,
-            magicInfo.shift,
-            magicInfo.offset,
-        });
-    }
-    try writer.print("}}", .{});
+    const full_path = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{output_path});
+    defer std.heap.page_allocator.free(full_path);
+
+    var file = try std.fs.cwd().createFile(full_path, .{});
+    defer file.close();
+
+    const bytes = std.mem.sliceAsBytes(magic_info_lookup[0..]);
+    try file.writeAll(bytes);
+
+    std.debug.print("Generated {} bytes of magic data to {s}\n", .{ bytes.len, full_path });
 }
