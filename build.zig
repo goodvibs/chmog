@@ -40,12 +40,12 @@ pub fn build(b: *std.Build) void {
 
     const generate_step = b.step("gen-magic", "Generate magic lookup tables");
 
-    const bishop_cmd = b.addRunArtifact(gen_magic_exec);
-    bishop_cmd.addArg("bishop");
+    const genBishopMagicLookup = b.addRunArtifact(gen_magic_exec);
+    genBishopMagicLookup.addArg("--bishop-only");
 
-    const rook_cmd = b.addRunArtifact(gen_magic_exec);
-    rook_cmd.addArg("rook");
+    const genRookMagicLookup = b.addRunArtifact(gen_magic_exec);
+    genRookMagicLookup.addArg("--rook-only");
 
-    generate_step.dependOn(&bishop_cmd.step);
-    generate_step.dependOn(&rook_cmd.step);
+    generate_step.dependOn(&genBishopMagicLookup.step);
+    generate_step.dependOn(&genRookMagicLookup.step);
 }
