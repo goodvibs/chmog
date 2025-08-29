@@ -30,6 +30,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    genZobristMod.addImport("chmog", lib_mod);
 
     const gen_zobrist_exec = b.addExecutable(.{
         .name = "gen-zobrist",
