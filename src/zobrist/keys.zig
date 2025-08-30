@@ -13,7 +13,7 @@ const NUM_SIDE_TO_MOVE_KEYS = 1;
 
 pub const NUM_KEYS = NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS + NUM_CASTLING_RIGHTS_KEYS + NUM_SIDE_TO_MOVE_KEYS;
 
-const ZOBRIST_KEYS_ARRAY_BYTES = @embedFile("../../data/zobristKeys.bin");
+const ZOBRIST_KEYS_ARRAY_BYTES = @embedFile("zobristKeys");
 const ZOBRIST_KEYS_ARRAY = blk: {
     const expectedType = [NUM_KEYS]Bitboard;
     const expectedSize = @sizeOf(expectedType);
@@ -42,5 +42,5 @@ pub fn zobristKeyForCastlingRights(castlingRights: CastlingRights) Bitboard {
 }
 
 pub fn zobristKeyForSideToMove(sideToMove: Color) Bitboard {
-    return if (sideToMove == Color.Black) sideToMoveKey[0] else 0;
+    return if (sideToMove == Color.Black) sideToMoveKey else 0;
 }

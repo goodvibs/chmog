@@ -50,10 +50,10 @@ pub const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
 pub const BishopMagicAttacksLookup = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE);
 pub const RookMagicAttacksLookup = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE);
 
-const BISHOP_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("../../data/bishopMagicAttacksLookup.bin");
+const BISHOP_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("bishopMagicAttacksLookup");
 const BISHOP_MAGIC_ATTACKS_LOOKUP = bytesToValue(BishopMagicAttacksLookup, BISHOP_MAGIC_ATTACKS_LOOKUP_BYTES);
 
-const ROOK_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("../../data/rookMagicAttacksLookup.bin");
+const ROOK_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("rookMagicAttacksLookup");
 const ROOK_MAGIC_ATTACKS_LOOKUP = bytesToValue(RookMagicAttacksLookup, ROOK_MAGIC_ATTACKS_LOOKUP_BYTES);
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
