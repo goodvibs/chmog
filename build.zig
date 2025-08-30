@@ -1,6 +1,7 @@
-const std = @import("std");
+const Build = @import("std").Build;
+const OptimizeMode = @import("std").builtin.OptimizeMode;
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
@@ -8,14 +9,14 @@ pub fn build(b: *std.Build) void {
     const baseLibMod = b.createModule(.{
         .root_source_file = b.path("src/mod.zig"),
         .target = target,
-        .optimize = optimize,
+        .optimize = OptimizeMode.Debug,
     });
 
     // Zobrist generation
     const genZobristMod = b.createModule(.{
         .root_source_file = b.path("bin/generateZobristKeys.zig"),
         .target = target,
-        .optimize = optimize,
+        .optimize = OptimizeMode.Debug,
     });
     genZobristMod.addImport("chmog", baseLibMod);
 
@@ -32,7 +33,7 @@ pub fn build(b: *std.Build) void {
     const genMagicMod = b.createModule(.{
         .root_source_file = b.path("bin/generateMagicLookups.zig"),
         .target = target,
-        .optimize = optimize,
+        .optimize = OptimizeMode.Debug,
     });
     genMagicMod.addImport("chmog", baseLibMod);
 
