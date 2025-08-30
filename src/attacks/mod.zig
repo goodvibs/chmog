@@ -1,7 +1,6 @@
 pub const manual = @import("manual.zig");
 pub const magic = @import("magic.zig");
 pub const precomputed = @import("precomputed.zig");
-const generated = @import("generated/mod.zig");
 
 pub const multiPawnPushes = manual.multiPawnPushes;
 pub const multiPawnAttacks = manual.multiPawnAttacks;

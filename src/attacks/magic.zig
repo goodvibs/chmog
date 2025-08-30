@@ -6,8 +6,7 @@ const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
 const iterBitCombinations = @import("../mod.zig").utils.iterBitCombinations;
 const manual = @import("../mod.zig").attacks.manual;
 const masks = @import("../mod.zig").masks;
-const BISHOP_MAGIC_INFO_LOOKUP = @import("generated/mod.zig").BISHOP_MAGIC_INFO_LOOKUP;
-const ROOK_MAGIC_INFO_LOOKUP = @import("generated/mod.zig").ROOK_MAGIC_INFO_LOOKUP;
+const bytesToValue = @import("std").mem.bytesToValue;
 
 fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (Square) ?Square {
     return struct {
@@ -51,8 +50,11 @@ pub const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
 pub const BishopMagicAttacksLookup = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE);
 pub const RookMagicAttacksLookup = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE);
 
-const BISHOP_MAGIC_ATTACKS_LOOKUP = BishopMagicAttacksLookup.initWithPrecomputed(manual.singleBishopAttacks, BISHOP_MAGIC_INFO_LOOKUP);
-const ROOK_MAGIC_ATTACKS_LOOKUP = RookMagicAttacksLookup.initWithPrecomputed(manual.singleRookAttacks, ROOK_MAGIC_INFO_LOOKUP);
+const BISHOP_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("../../data/bishopMagicAttacksLookup.bin");
+const BISHOP_MAGIC_ATTACKS_LOOKUP = bytesToValue(BishopMagicAttacksLookup, BISHOP_MAGIC_ATTACKS_LOOKUP_BYTES);
+
+const ROOK_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("../../data/rookMagicAttacksLookup.bin");
+const ROOK_MAGIC_ATTACKS_LOOKUP = bytesToValue(RookMagicAttacksLookup, ROOK_MAGIC_ATTACKS_LOOKUP_BYTES);
 
 pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
@@ -137,29 +139,6 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
                 .attacks = table,
                 .magicInfoLookup = magicInfoLookup,
             };
-        }
-
-        fn initWithPrecomputed(comptime computeAttacks: fn (Square, Bitboard) Bitboard, comptime magicInfoLookup: [64]MagicInfo) Self {
-            comptime {
-                @setEvalBranchQuota(tableSize * 100);
-                var table: [tableSize]Bitboard = undefined;
-
-                for (0..64) |square_idx| {
-                    const square = Square.fromInt(@truncate(square_idx));
-                    const magicInfo = magicInfoLookup[square_idx];
-                    const numUniqueBlockerMasks = @as(u13, 1) << @truncate(@popCount(magicInfo.relevantMask));
-                    var bitSubsetsIter = iterBitCombinations(magicInfo.relevantMask);
-                    for (0..numUniqueBlockerMasks) |_| {
-                        const blockers = bitSubsetsIter.next() orelse unreachable;
-                        table[magicInfo.key(blockers)] = computeAttacks(square, blockers);
-                    }
-                }
-
-                return Self{
-                    .attacks = table,
-                    .magicInfoLookup = magicInfoLookup,
-                };
-            }
         }
 
         fn get(self: *const Self, square: Square, occupied: Bitboard) Bitboard {
