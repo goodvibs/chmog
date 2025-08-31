@@ -44,6 +44,11 @@ pub fn main() !void {
     };
     defer res.deinit();
 
+    if (res.args.help != 0) {
+        try clap.helpToFile(.stdout(), clap.Help, &params, .{});
+        return;
+    }
+
     if (res.args.@"bishop-output") |path| {
         const lookup = BishopMagicAttacksLookup.init(bishopRelevantMask, manual.singleBishopAttacks);
         try writeBinaryData(path, lookup);
