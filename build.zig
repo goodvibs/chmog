@@ -29,6 +29,10 @@ pub fn build(b: *Build) void {
     });
 
     const genZobristRun = b.addRunArtifact(genZobristExec);
+    genZobristRun.addArg("--algorithm");
+    genZobristRun.addArg("xoshiro256");
+    genZobristRun.addArg("--seed");
+    genZobristRun.addArg("31415");
     genZobristRun.addArg("--output");
     const zobristFile = genZobristRun.addOutputFileArg("zobristKeys.bin");
 

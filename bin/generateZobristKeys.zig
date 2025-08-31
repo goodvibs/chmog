@@ -3,20 +3,6 @@ const NUM_KEYS = @import("chmog").zobrist.NUM_KEYS;
 const clap = @import("clap");
 const writeBinaryData = @import("utils.zig").writeBinaryData;
 
-const Algorithm = enum {
-    xoshiro256,
-    pcg,
-    isaac64,
-
-    fn toString(self: Algorithm) []const u8 {
-        return switch (self) {
-            .xoshiro256 => "xoshiro256",
-            .pcg => "pcg",
-            .isaac64 => "isaac64",
-        };
-    }
-};
-
 const params = clap.parseParamsComptime(
     \\-h, --help                 Display this help and exit.
     \\    --seed <u64>           Seed for random number generation (default: current timestamp).
@@ -26,17 +12,12 @@ const params = clap.parseParamsComptime(
 );
 
 pub fn main() !void {
-    var gpa = std.heap.DebugAllocator(.{}){};
-    const allocator = gpa.allocator();
-    defer _ = gpa.deinit();
-
-    const parsers = .{
-        .str = clap.parsers.string,
-        .u64 = clap.parsers.int(u64, 10),
-    };
+    var da = std.heap.DebugAllocator(.{}){};
+    const allocator = da.allocator();
+    defer _ = da.deinit();
 
     var diag = clap.Diagnostic{};
-    var res = clap.parse(clap.Help, &params, parsers, .{
+    var res = clap.parse(clap.Help, &params, clap.parsers.default, .{
         .diagnostic = &diag,
         .allocator = allocator,
     }) catch |err| {
@@ -50,24 +31,21 @@ pub fn main() !void {
         return;
     }
 
-    const algorithm = if (res.args.algorithm) |algo_str| blk: {
-        if (std.mem.eql(u8, algo_str, "xoshiro256")) break :blk Algorithm.xoshiro256;
-        if (std.mem.eql(u8, algo_str, "pcg")) break :blk Algorithm.pcg;
-        if (std.mem.eql(u8, algo_str, "isaac64")) break :blk Algorithm.isaac64;
-        std.debug.print("Error: Invalid algorithm '{s}'. Valid options: xoshiro256, pcg, isaac64\n", .{algo_str});
-        std.process.exit(1);
-    } else Algorithm.xoshiro256;
+    const algorithm = res.args.algorithm orelse return error.MissingAlgorithm;
+    const seed = res.args.seed orelse return error.MissingSeed;
+    const outputPath = res.args.output orelse return error.MissingOutput;
 
-    const seed = res.args.seed orelse @as(u64, @intCast(std.time.timestamp()));
-    const outputPath = res.args.output orelse "zobristKeys.bin";
+    var zobristKeys: [NUM_KEYS]u64 = undefined;
 
-    std.debug.print("Generating Zobrist keys with {} (seed: {})\n", .{ algorithm.toString(), seed });
-
-    const zobristKeys = switch (algorithm) {
-        .xoshiro256 => generateKeys(std.Random.Xoshiro256, seed),
-        .pcg => generateKeys(std.Random.Pcg, seed),
-        .isaac64 => generateKeys(std.Random.Isaac64, seed),
-    };
+    if (std.mem.eql(u8, algorithm, "xoshiro256")) {
+        zobristKeys = generateKeys(std.Random.Xoshiro256, seed);
+    } else if (std.mem.eql(u8, algorithm, "pcg")) {
+        zobristKeys = generateKeys(std.Random.Pcg, seed);
+    } else if (std.mem.eql(u8, algorithm, "isaac64")) {
+        zobristKeys = generateKeys(std.Random.Isaac64, seed);
+    } else {
+        return error.UnknownAlgorithm;
+    }
 
     try writeBinaryData(outputPath, zobristKeys);
 }
