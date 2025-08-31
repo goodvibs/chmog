@@ -99,4 +99,19 @@ pub fn build(b: *Build) void {
     const genMagicStep = b.step("gen-magic", "Generate all magic tables");
     genMagicStep.dependOn(&genBishopRun.step);
     genMagicStep.dependOn(&genRookRun.step);
+
+    // Manual script execution steps
+    const runZobristStep = b.step("custom-gen-zobrist", "Run zobrist key generator");
+    const runZobrist = b.addRunArtifact(genZobristExec);
+    if (b.args) |args| {
+        runZobrist.addArgs(args);
+    }
+    runZobristStep.dependOn(&runZobrist.step);
+
+    const runMagicStep = b.step("custom-gen-magic", "Run magic table generator");
+    const runMagic = b.addRunArtifact(genMagicExec);
+    if (b.args) |args| {
+        runMagic.addArgs(args);
+    }
+    runMagicStep.dependOn(&runMagic.step);
 }
