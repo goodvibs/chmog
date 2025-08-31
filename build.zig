@@ -21,6 +21,7 @@ pub fn build(b: *Build) void {
         .optimize = OptimizeMode.Debug,
     });
     genZobristMod.addImport("chmog", baseLibMod);
+    genZobristMod.addImport("clap", clap.module("clap"));
 
     const genZobristExec = b.addExecutable(.{
         .name = "gen-zobrist",
