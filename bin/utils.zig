@@ -1,6 +1,6 @@
 const std = @import("std");
 
-fn writeBinaryData(outputPath: []const u8, data: anytype) !void {
+pub fn writeBinaryData(outputPath: []const u8, data: anytype) !void {
     if (std.fs.path.dirname(outputPath)) |dir_path| {
         std.fs.cwd().makePath(dir_path) catch |err| switch (err) {
             error.PathAlreadyExists => {}, // Directory exists, that's fine
