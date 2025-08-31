@@ -8,6 +8,8 @@ const RookMagicAttacksLookup = chmog.attacks.magic.RookMagicAttacksLookup;
 const manual = chmog.attacks.manual;
 const computeBishopRelevantMask = chmog.attacks.magic.computeBishopRelevantMask;
 const computeRookRelevantMask = chmog.attacks.magic.computeRookRelevantMask;
+const clap = @import("clap");
+const writeBinaryData = @import("utils.zig").writeBinaryData;
 
 fn bishopRelevantMask(s: Square) Bitboard {
     return computeBishopRelevantMask([1]Square{s});
@@ -17,62 +19,37 @@ fn rookRelevantMask(s: Square) Bitboard {
     return computeRookRelevantMask([1]Square{s});
 }
 
-const GenerateOptions = struct {
-    bishop: bool,
-    rook: bool,
-};
-
-fn parseArgs(args: [][:0]u8) !GenerateOptions {
-    if (args.len == 1) {
-        return GenerateOptions{ .bishop = true, .rook = true };
-    } else if (args.len == 2) {
-        const flag = args[1];
-        if (std.mem.eql(u8, flag, "--bishop-only")) {
-            return GenerateOptions{ .bishop = true, .rook = false };
-        } else if (std.mem.eql(u8, flag, "--rook-only")) {
-            return GenerateOptions{ .bishop = false, .rook = true };
-        } else {
-            return error.InvalidArgument;
-        }
-    } else {
-        return error.TooManyArguments;
-    }
-}
+const params = clap.parseParamsComptime(
+    \\-h, --help                    Display this help and exit.
+    \\    --bishop-output <str>     Output file for bishop magic table.
+    \\    --rook-output <str>       Output file for rook magic table.
+    \\
+);
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    defer _ = gpa.deinit();
+    var da = std.heap.DebugAllocator(.{}){};
+    const allocator = da.allocator();
+    defer _ = da.deinit();
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    const options = parseArgs(args) catch |err| {
-        std.debug.print("Error: {s}\n", .{@errorName(err)});
-        std.debug.print("Usage: {s} <Optional[--bishop-only|--rook-only]>\n", .{args[0]});
-        return std.process.exit(1);
+    var diag = clap.Diagnostic{};
+
+    var res = clap.parse(clap.Help, &params, clap.parsers.default, .{
+        .diagnostic = &diag,
+        .allocator = allocator,
+    }) catch |err| {
+        try diag.reportToFile(.stderr(), err);
+        return err;
     };
+    defer res.deinit();
 
-    if (options.bishop) {
+    if (res.args.@"bishop-output") |path| {
         const lookup = BishopMagicAttacksLookup.init(bishopRelevantMask, manual.singleBishopAttacks);
-        try writeBinaryData("bishopMagicAttacksLookup.bin", lookup);
+        try writeBinaryData(path, lookup);
     }
-    if (options.rook) {
+    if (res.args.@"rook-output") |path| {
         const lookup = RookMagicAttacksLookup.init(rookRelevantMask, manual.singleRookAttacks);
-        try writeBinaryData("rookMagicAttacksLookup.bin", lookup);
+        try writeBinaryData(path, lookup);
     }
-}
-
-fn writeBinaryData(asFilename: []const u8, stuff: anytype) !void {
-    try std.fs.cwd().makePath("data");
-
-    const completeRelativePath = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{asFilename});
-    defer std.heap.page_allocator.free(completeRelativePath);
-
-    var file = try std.fs.cwd().createFile(completeRelativePath, .{});
-    defer file.close();
-
-    const bytes = std.mem.asBytes(&stuff);
-    try file.writeAll(bytes);
-
-    std.debug.print("Wrote {} bytes to {s}\n", .{ bytes.len, completeRelativePath });
 }
