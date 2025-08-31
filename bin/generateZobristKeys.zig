@@ -1,22 +1,12 @@
 const std = @import("std");
 const NUM_KEYS = @import("chmog").zobrist.NUM_KEYS;
-
-const GenerateOptions = struct {
-    seed: u64,
-    algorithm: Algorithm,
-};
+const clap = @import("clap");
+const writeBinaryData = @import("utils.zig").writeBinaryData;
 
 const Algorithm = enum {
     xoshiro256,
     pcg,
     isaac64,
-
-    fn fromString(str: []const u8) ?Algorithm {
-        if (std.mem.eql(u8, str, "xoshiro256")) return .xoshiro256;
-        if (std.mem.eql(u8, str, "pcg")) return .pcg;
-        if (std.mem.eql(u8, str, "isaac64")) return .isaac64;
-        return null;
-    }
 
     fn toString(self: Algorithm) []const u8 {
         return switch (self) {
@@ -27,88 +17,68 @@ const Algorithm = enum {
     }
 };
 
-fn parseArgs(args: [][:0]u8) !GenerateOptions {
-    var seed: u64 = @intCast(std.time.timestamp());
-    var algorithm: Algorithm = .xoshiro256;
-
-    var i: usize = 1;
-    while (i < args.len) {
-        const arg = args[i];
-
-        if (std.mem.eql(u8, arg, "--seed")) {
-            i += 1;
-            if (i >= args.len) return error.MissingSeedValue;
-            seed = std.fmt.parseInt(u64, args[i], 10) catch return error.InvalidSeed;
-        } else if (std.mem.eql(u8, arg, "--algorithm")) {
-            i += 1;
-            if (i >= args.len) return error.MissingAlgorithmValue;
-            algorithm = Algorithm.fromString(args[i]) orelse return error.InvalidAlgorithm;
-        } else {
-            std.debug.print("Unknown argument: {s}\n", .{arg});
-            return error.InvalidArgument;
-        }
-
-        i += 1;
-    }
-
-    return GenerateOptions{
-        .seed = seed,
-        .algorithm = algorithm,
-    };
-}
-
-fn printUsage(program_name: []const u8) void {
-    std.debug.print("Usage: {s} [OPTIONS]\n", .{program_name});
-    std.debug.print("Options:\n", .{});
-    std.debug.print("  --seed <number>      Seed for random number generation (default: current timestamp)\n", .{});
-    std.debug.print("  --algorithm <name>   Algorithm: xoshiro256, pcg, isaac64 (default: xoshiro256)\n", .{});
-}
+const params = clap.parseParamsComptime(
+    \\-h, --help                 Display this help and exit.
+    \\    --seed <u64>           Seed for random number generation (default: current timestamp).
+    \\    --algorithm <str>      Algorithm: xoshiro256, pcg, isaac64 (default: xoshiro256).
+    \\    --output <str>         Output file for zobrist keys.
+    \\
+);
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
-
-    const options = parseArgs(args) catch |err| {
-        std.debug.print("Error: {s}\n", .{@errorName(err)});
-        printUsage(args[0]);
-        std.process.exit(1);
+    const parsers = .{
+        .str = clap.parsers.string,
+        .u64 = clap.parsers.int(u64, 10),
     };
 
-    const zobrist_hashes = switch (options.algorithm) {
-        .xoshiro256 => generateHashes(std.Random.Xoshiro256, options.seed),
-        .pcg => generateHashes(std.Random.Pcg, options.seed),
-        .isaac64 => generateHashes(std.Random.Isaac64, options.seed),
+    var diag = clap.Diagnostic{};
+    var res = clap.parse(clap.Help, &params, parsers, .{
+        .diagnostic = &diag,
+        .allocator = allocator,
+    }) catch |err| {
+        try diag.reportToFile(.stderr(), err);
+        return err;
     };
+    defer res.deinit();
 
-    try writeBinaryData("zobristKeys.bin", zobrist_hashes);
-}
-
-fn generateHashes(comptime RngType: type, seed: u64) [NUM_KEYS]u64 {
-    var rng = RngType.init(seed);
-    var hashes: [NUM_KEYS]u64 = undefined;
-
-    for (&hashes) |*hash| {
-        hash.* = rng.random().int(u64);
+    if (res.args.help != 0) {
+        try clap.helpToFile(.stdout(), clap.Help, &params, .{});
+        return;
     }
 
-    return hashes;
+    const algorithm = if (res.args.algorithm) |algo_str| blk: {
+        if (std.mem.eql(u8, algo_str, "xoshiro256")) break :blk Algorithm.xoshiro256;
+        if (std.mem.eql(u8, algo_str, "pcg")) break :blk Algorithm.pcg;
+        if (std.mem.eql(u8, algo_str, "isaac64")) break :blk Algorithm.isaac64;
+        std.debug.print("Error: Invalid algorithm '{s}'. Valid options: xoshiro256, pcg, isaac64\n", .{algo_str});
+        std.process.exit(1);
+    } else Algorithm.xoshiro256;
+
+    const seed = res.args.seed orelse @as(u64, @intCast(std.time.timestamp()));
+    const outputPath = res.args.output orelse "zobristKeys.bin";
+
+    std.debug.print("Generating Zobrist keys with {} (seed: {})\n", .{ algorithm.toString(), seed });
+
+    const zobristKeys = switch (algorithm) {
+        .xoshiro256 => generateKeys(std.Random.Xoshiro256, seed),
+        .pcg => generateKeys(std.Random.Pcg, seed),
+        .isaac64 => generateKeys(std.Random.Isaac64, seed),
+    };
+
+    try writeBinaryData(outputPath, zobristKeys);
 }
 
-fn writeBinaryData(asFilename: []const u8, zobrist_hashes: [NUM_KEYS]u64) !void {
-    try std.fs.cwd().makePath("data");
+fn generateKeys(comptime RngType: type, seed: u64) [NUM_KEYS]u64 {
+    var rng = RngType.init(seed);
+    var keys: [NUM_KEYS]u64 = undefined;
 
-    const completeRelativePath = try std.fmt.allocPrint(std.heap.page_allocator, "data/{s}", .{asFilename});
-    defer std.heap.page_allocator.free(completeRelativePath);
+    for (&keys) |*key| {
+        key.* = rng.random().int(u64);
+    }
 
-    var file = try std.fs.cwd().createFile(completeRelativePath, .{});
-    defer file.close();
-
-    const bytes = std.mem.sliceAsBytes(zobrist_hashes[0..]);
-    try file.writeAll(bytes);
-
-    std.debug.print("Wrote {} bytes to {s}\n", .{ bytes.len, completeRelativePath });
+    return keys;
 }

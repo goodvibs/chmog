@@ -28,8 +28,8 @@ pub fn build(b: *Build) void {
     });
 
     const genZobristRun = b.addRunArtifact(genZobristExec);
-    // const zobristFile = genZobristRun.addOutputFileArg("data/zobristKeys.bin");
-    const zobristFile = b.path("data/zobristKeys.bin");
+    genZobristRun.addArg("--output");
+    const zobristFile = genZobristRun.addOutputFileArg("zobristKeys.bin");
 
     // Magic generation
     const genMagicMod = b.createModule(.{
