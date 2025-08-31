@@ -46,10 +46,12 @@ pub fn build(b: *Build) void {
     });
 
     const genBishopRun = b.addRunArtifact(genMagicExec);
-    const bishopFile = genBishopRun.addPrefixedOutputFileArg("--bishop-output ", "data/bishopMagicAttacksLookup.bin");
+    genBishopRun.addArg("--bishop-output");
+    const bishopFile = genBishopRun.addOutputFileArg("bishopMagicAttacksLookup.bin");
 
     const genRookRun = b.addRunArtifact(genMagicExec);
-    const rookFile = genRookRun.addPrefixedOutputFileArg("--rook-output ", "data/rookMagicAttacksLookup.bin");
+    genRookRun.addArg("--rook-output");
+    const rookFile = genRookRun.addOutputFileArg("rookMagicAttacksLookup.bin");
 
     // Full library module - uses generated files
     const fullLibMod = b.createModule(.{
