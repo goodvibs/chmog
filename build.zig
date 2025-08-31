@@ -86,29 +86,15 @@ pub fn build(b: *Build) void {
     const testStep = b.step("test", "Run unit tests");
     testStep.dependOn(&runLibUnitTests.step);
 
-    // Manual generation steps
-    const genZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
-    genZobristStep.dependOn(&genZobristRun.step);
-
-    const genBishopStep = b.step("gen-bishop-magic", "Generate bishop magic tables");
-    genBishopStep.dependOn(&genBishopRun.step);
-
-    const genRookStep = b.step("gen-rook-magic", "Generate rook magic tables");
-    genRookStep.dependOn(&genRookRun.step);
-
-    const genMagicStep = b.step("gen-magic", "Generate all magic tables");
-    genMagicStep.dependOn(&genBishopRun.step);
-    genMagicStep.dependOn(&genRookRun.step);
-
-    // Manual script execution steps
-    const runZobristStep = b.step("custom-gen-zobrist", "Run zobrist key generator");
+    // Expose generation scripts
+    const runZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
     const runZobrist = b.addRunArtifact(genZobristExec);
     if (b.args) |args| {
         runZobrist.addArgs(args);
     }
     runZobristStep.dependOn(&runZobrist.step);
 
-    const runMagicStep = b.step("custom-gen-magic", "Run magic table generator");
+    const runMagicStep = b.step("gen-magic", "Generate magic numbers and attack tables");
     const runMagic = b.addRunArtifact(genMagicExec);
     if (b.args) |args| {
         runMagic.addArgs(args);
