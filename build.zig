@@ -12,6 +12,8 @@ pub fn build(b: *Build) void {
         .optimize = OptimizeMode.Debug,
     });
 
+    const clap = b.dependency("clap", .{});
+
     // Zobrist generation
     const genZobristMod = b.createModule(.{
         .root_source_file = b.path("bin/generateZobristKeys.zig"),
@@ -36,6 +38,7 @@ pub fn build(b: *Build) void {
         .optimize = OptimizeMode.Debug,
     });
     genMagicMod.addImport("chmog", baseLibMod);
+    genMagicMod.addImport("clap", clap.module("clap"));
 
     const genMagicExec = b.addExecutable(.{
         .name = "gen-magic",
@@ -43,14 +46,10 @@ pub fn build(b: *Build) void {
     });
 
     const genBishopRun = b.addRunArtifact(genMagicExec);
-    genBishopRun.addArg("--bishop-only");
-    // const bishopFile = genBishopRun.addPrefixedOutputFileArg("data/bishopMagicAttacksLookup.bin");
-    const bishopFile = b.path("data/bishopMagicAttacksLookup.bin");
+    const bishopFile = genBishopRun.addPrefixedOutputFileArg("--bishop-output ", "data/bishopMagicAttacksLookup.bin");
 
     const genRookRun = b.addRunArtifact(genMagicExec);
-    genRookRun.addArg("--rook-only");
-    // const rookFile = genRookRun.addPrefixedOutputFileArg("data/rookMagicAttacksLookup.bin");
-    const rookFile = b.path("data/rookMagicAttacksLookup.bin");
+    const rookFile = genRookRun.addPrefixedOutputFileArg("--rook-output ", "data/rookMagicAttacksLookup.bin");
 
     // Full library module - uses generated files
     const fullLibMod = b.createModule(.{
