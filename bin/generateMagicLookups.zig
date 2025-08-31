@@ -21,8 +21,8 @@ fn rookRelevantMask(s: Square) Bitboard {
 
 const params = clap.parseParamsComptime(
     \\-h, --help                    Display this help and exit.
-    \\    --bishop-output <str>     Output file for bishop magic table.
-    \\    --rook-output <str>       Output file for rook magic table.
+    \\    --bishop-output <str>     Output file for bishop magic attacks lookup table.
+    \\    --rook-output <str>       Output file for rook magic attacks lookup table table.
     \\
 );
 
