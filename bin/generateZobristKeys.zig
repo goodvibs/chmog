@@ -31,8 +31,8 @@ pub fn main() !void {
         return;
     }
 
-    const algorithm = res.args.algorithm orelse return error.MissingAlgorithm;
-    const seed = res.args.seed orelse return error.MissingSeed;
+    const algorithm = res.args.algorithm orelse "xoshiro256";
+    const seed = res.args.seed orelse @abs(std.time.milliTimestamp());
     const outputPath = res.args.output orelse return error.MissingOutput;
 
     var zobristKeys: [NUM_KEYS]u64 = undefined;
