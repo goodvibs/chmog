@@ -90,10 +90,10 @@ pub fn build(b: *Build) void {
     const genZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
     genZobristStep.dependOn(&genZobristRun.step);
 
-    const genBishopStep = b.step("gen-bishop", "Generate bishop magic tables");
+    const genBishopStep = b.step("gen-bishop-magic", "Generate bishop magic tables");
     genBishopStep.dependOn(&genBishopRun.step);
 
-    const genRookStep = b.step("gen-rook", "Generate rook magic tables");
+    const genRookStep = b.step("gen-rook-magic", "Generate rook magic tables");
     genRookStep.dependOn(&genRookRun.step);
 
     const genMagicStep = b.step("gen-magic", "Generate all magic tables");
