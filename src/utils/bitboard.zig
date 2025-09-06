@@ -77,7 +77,7 @@ fn computeEdgeToEdge(squares: [2]Square) Bitboard {
 const EDGE_TO_EDGE_LOOKUP = TwoSquaresToBitboard.init(computeEdgeToEdge);
 
 pub fn edgeToEdge(square1: Square, square2: Square) Bitboard {
-    EDGE_TO_EDGE_LOOKUP.get([2]Square{ square1, square2 });
+    return EDGE_TO_EDGE_LOOKUP.get([2]Square{ square1, square2 });
 }
 
 fn computeBetween(squares: [2]Square) Bitboard {
@@ -99,7 +99,7 @@ fn computeBetween(squares: [2]Square) Bitboard {
 const BETWEEN_LOOKUP = TwoSquaresToBitboard.init(computeBetween);
 
 pub fn between(square1: Square, square2: Square) Bitboard {
-    BETWEEN_LOOKUP.get([2]Square{ square1, square2 });
+    return BETWEEN_LOOKUP.get([2]Square{ square1, square2 });
 }
 
 pub fn iterSetBits(bitboard: Bitboard) MaskBitsIterator {
