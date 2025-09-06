@@ -162,11 +162,11 @@ test "iterBitCombinations" {
         var iter = iterBitCombinations(mask);
         const expected = [2]Bitboard{ 0, 1 };
 
-        var result = ArrayList(Bitboard).init(testing.allocator);
-        defer result.deinit();
+        var result = try ArrayList(Bitboard).initCapacity(testing.allocator, 2);
+        defer result.deinit(testing.allocator);
 
         while (iter.next()) |item| {
-            try result.append(item);
+            try result.append(testing.allocator, item);
         }
 
         try testing.expectEqualSlices(Bitboard, &expected, result.items);
@@ -177,11 +177,11 @@ test "iterBitCombinations" {
         var iter = iterBitCombinations(mask);
         const expected = [4]Bitboard{ 0b0000, 0b0010, 0b1000, 0b1010 };
 
-        var result = ArrayList(Bitboard).init(testing.allocator);
-        defer result.deinit();
+        var result = try ArrayList(Bitboard).initCapacity(testing.allocator, 4);
+        defer result.deinit(testing.allocator);
 
         while (iter.next()) |item| {
-            try result.append(item);
+            try result.append(testing.allocator, item);
         }
 
         try testing.expectEqualSlices(Bitboard, &expected, result.items);
@@ -195,11 +195,11 @@ test "iterBitCombinations" {
             0b1011, 0b1100, 0b1101, 0b1110, 0b1111,
         };
 
-        var result = ArrayList(Bitboard).init(testing.allocator);
-        defer result.deinit();
+        var result = try ArrayList(Bitboard).initCapacity(testing.allocator, 16);
+        defer result.deinit(testing.allocator);
 
         while (iter.next()) |item| {
-            try result.append(item);
+            try result.append(testing.allocator, item);
         }
 
         try testing.expectEqualSlices(Bitboard, &expected, result.items);
