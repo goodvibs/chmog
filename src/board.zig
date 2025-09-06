@@ -37,7 +37,7 @@ pub const Board = struct {
             },
             .partialZobristHash = 0,
         };
-        res.partialZobristHash = computeBoardZobristHash(res);
+        res.partialZobristHash = computeBoardZobristHash(&res);
         return res;
     }
 
@@ -56,7 +56,7 @@ pub const Board = struct {
     pub fn togglePiece(self: *Board, piece: Piece, at: Square) void {
         self.pieceMasks[@as(usize, piece.int())] ^= at.mask();
         const key = zobristKeyForPieceSquare(piece, at);
-        self.partialZobristHash.xor(key);
+        self.partialZobristHash ^= key;
     }
 
     pub fn xorOccupied(self: *Board, mask: Bitboard) void {
