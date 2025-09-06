@@ -11,7 +11,7 @@ const zobristKeyForCastlingRights = @import("../mod.zig").zobrist.zobristKeyForC
 const zobristKeyForSideToMove = @import("../mod.zig").zobrist.zobristKeyForSideToMove;
 
 pub fn computeBoardZobristHash(board: *const Board) Bitboard {
-    var hash = 0;
+    var hash: Bitboard = 0;
     for (1..7) |i| {
         const piece = Piece.fromInt(@truncate(i)) catch unreachable;
         const mask = board.pieceMasks[i];
@@ -27,8 +27,8 @@ pub fn computeBoardZobristHash(board: *const Board) Bitboard {
 }
 
 pub fn computePositionContextZobristHash(context: *const PositionContext) Bitboard {
-    var hash = 0;
-    hash ^= zobristKeyForEnPassantFile(context.enPassantFile);
+    var hash: Bitboard = 0;
+    hash ^= zobristKeyForEnPassantFile(context.doublePawnPushFile);
     hash ^= zobristKeyForCastlingRights(context.castlingRights);
     return hash;
 }
