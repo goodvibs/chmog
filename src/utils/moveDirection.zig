@@ -100,7 +100,7 @@ pub const KnightMoveDirection = enum(u3) {
     }
 };
 
-pub const PieceMoveDirection = union {
+pub const PieceMoveDirection = packed union {
     queenlike: QueenlikeMoveDirection,
     knight: KnightMoveDirection,
 
