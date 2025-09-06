@@ -6,21 +6,21 @@ const File = @import("./mod.zig").File;
 pub const PositionContext = struct {
     pinned: Bitboard,
     checkers: Bitboard,
-    zobrist_hash: Bitboard,
-    castling_rights: CastlingRights,
-    double_pawn_push: ?File,
-    halfmove_clock: u7,
-    captured_piece: Piece,
+    zobristHash: Bitboard,
+    castlingRights: CastlingRights,
+    doublePawnPushFile: ?File,
+    halfmoveClock: u7,
+    capturedPiece: Piece,
 
     pub fn blank() PositionContext {
         return PositionContext{
             .pinned = 0,
             .checkers = 0,
-            .zobrist_hash = 0,
-            .castling_rights = CastlingRights.none(),
-            .double_pawn_push = null,
-            .halfmove_clock = 0,
-            .captured_piece = Piece.Null,
+            .zobristHash = 0,
+            .castlingRights = CastlingRights.none(),
+            .doublePawnPushFile = null,
+            .halfmoveClock = 0,
+            .capturedPiece = Piece.Null,
         };
     }
 };
