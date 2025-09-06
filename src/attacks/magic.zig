@@ -65,7 +65,7 @@ pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
 }
 
 fn MagicAttacksLookup(comptime tableSize: usize) type {
-    return struct {
+    return extern struct {
         const Self = @This();
 
         attacks: [tableSize]Bitboard,
@@ -88,7 +88,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
 
                 const relevantMask = relevantMaskLookup(s);
                 const numRelevantBits: u4 = @truncate(@popCount(relevantMask));
-                const shift: u6 = @truncate(@as(u7, 64) - numRelevantBits);
+                const shift = @as(u8, 64) - numRelevantBits;
                 const numUniqueBlockerMasks = @as(u13, 1) << numRelevantBits;
 
                 var bitSubsetsIter = iterBitCombinations(relevantMask);
@@ -113,7 +113,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
 
                     while (blockerMaskIndex < numUniqueBlockerMasks) : (blockerMaskIndex += 1) {
                         const blockers = blockersLookup[blockerMaskIndex];
-                        const indexWithoutOffset: u32 = @truncate((blockers *% magicNumber) >> shift);
+                        const indexWithoutOffset: u32 = @truncate((blockers *% magicNumber) >> @truncate(shift));
                         const tableIndex = offset + indexWithoutOffset;
 
                         if (magicAttemptStamps[indexWithoutOffset] < numMagicsTried) {
@@ -148,10 +148,10 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
     };
 }
 
-pub const MagicInfo = struct {
+pub const MagicInfo = extern struct {
     relevantMask: Bitboard,
     magicNumber: Bitboard,
-    shift: u6,
+    shift: u8,
     offset: u32,
 
     pub fn key(self: MagicInfo, occupiedMask: Bitboard) usize {
@@ -161,7 +161,7 @@ pub const MagicInfo = struct {
     pub fn keyWithoutOffset(self: MagicInfo, occupiedMask: Bitboard) usize {
         const blockers = occupiedMask & self.relevantMask;
         const unshiftedKey = blockers *% self.magicNumber;
-        return @truncate(unshiftedKey >> self.shift);
+        return @truncate(unshiftedKey >> @truncate(self.shift));
     }
 };
 
