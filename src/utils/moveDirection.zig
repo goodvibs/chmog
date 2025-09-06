@@ -28,7 +28,7 @@ pub const QueenlikeMoveDirection = enum(u3) {
         const toNum = to.int();
         const valueChange = @as(i7, toNum) - @as(i7, fromNum);
 
-        var positiveDirection = undefined;
+        var positiveDirection: QueenlikeMoveDirection = undefined;
 
         if (from.rank() == to.rank()) {
             positiveDirection = QueenlikeMoveDirection.Right;
@@ -78,7 +78,7 @@ pub const KnightMoveDirection = enum(u3) {
         const valueChange = @as(i7, toNum) - @as(i7, fromNum);
         const absValueChange = @abs(valueChange);
 
-        var positiveDirection = undefined;
+        var positiveDirection: KnightMoveDirection = undefined;
 
         if (absValueChange == 15) {
             positiveDirection = KnightMoveDirection.TwoDownOneLeft;
