@@ -58,7 +58,7 @@ fn computeEdgeToEdge(squares: [2]Square) Bitboard {
     const square1 = squares[0];
     const square2 = squares[1];
     if (square1 == square2 or !square1.isOnSameLineAs(square2)) return 0 else {
-        const direction = @as(QueenlikeMoveDirection, PieceMoveDirection.lookup(square1, square2) orelse unreachable);
+        const direction: QueenlikeMoveDirection = (PieceMoveDirection.lookup(square1, square2) orelse unreachable).queenlike;
         var current = square1;
         var mask = current.mask();
         while (current.neighborInDirection(direction)) |next| {
