@@ -20,7 +20,7 @@ const ZOBRIST_KEYS_ARRAY = blk: {
     if (ZOBRIST_KEYS_ARRAY_BYTES.len != expectedSize) {
         @compileError("Zobrist data size mismatch");
     }
-    break :blk bytesToValue(expectedType, ZOBRIST_KEYS_ARRAY_BYTES[0..expectedSize]);
+    break :blk bytesToValue(expectedType, ZOBRIST_KEYS_ARRAY_BYTES);
 };
 
 const pieceSquareKeys = ZOBRIST_KEYS_ARRAY[0..NUM_PIECE_SQUARE_KEYS];
