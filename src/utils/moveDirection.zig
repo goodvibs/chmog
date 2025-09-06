@@ -32,11 +32,11 @@ pub const QueenlikeMoveDirection = enum(u3) {
 
         if (from.rank() == to.rank()) {
             positiveDirection = QueenlikeMoveDirection.Right;
-        } else if (valueChange % 8 == 0) {
+        } else if (@mod(valueChange, 8) == 0) {
             positiveDirection = QueenlikeMoveDirection.Down;
-        } else if (valueChange % 9 == 0) {
+        } else if (@mod(valueChange, 9) == 0) {
             positiveDirection = QueenlikeMoveDirection.DownRight;
-        } else if (valueChange % 7 == 0) {
+        } else if (@mod(valueChange, 7) == 0) {
             positiveDirection = QueenlikeMoveDirection.DownLeft;
         } else {
             return null;
