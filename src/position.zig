@@ -13,10 +13,10 @@ pub const Position = struct {
     gameResult: ?GameResult,
     sideToMove: Color,
 
-    pub fn initial() Position {
+    pub fn initial(allocator: std.mem.Allocator, capacity: usize) !Position {
         return Position{
             .board = Board.initial(),
-            .contexts = ArrayList(PositionContext).init(std.heap.page_allocator),
+            .contexts = try ArrayList(PositionContext).initCapacity(allocator, capacity),
             .halfmove = 0,
             .gameResult = null,
             .sideToMove = Color.White,
