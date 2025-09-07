@@ -19,6 +19,11 @@ pub const Rank = enum(u3) {
     pub fn char(self: Rank) u8 {
         return @as(u8, 7 - self.int()) + '1';
     }
+
+    pub fn fromChar(char_: u8) !Rank {
+        if (char_ < '1' or char_ > '8') return error.InvalidChar;
+        return Rank.fromInt(7 - (char_ - '1'));
+    }
 };
 
 const testing = @import("std").testing;

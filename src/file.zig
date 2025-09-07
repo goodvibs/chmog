@@ -23,6 +23,16 @@ pub const File = enum(u3) {
     pub fn uppercaseChar(self: File) u8 {
         return @as(u8, self.int()) + 'A';
     }
+
+    pub fn fromLowercaseChar(char: u8) !File {
+        if (char < 'a' or char > 'h') return error.InvalidChar;
+        return File.fromInt(char - 'a');
+    }
+
+    pub fn fromUppercaseChar(char: u8) !File {
+        if (char < 'A' or char > 'H') return error.InvalidChar;
+        return File.fromInt(char - 'A');
+    }
 };
 
 const testing = @import("std").testing;

@@ -183,6 +183,12 @@ pub const Square = enum(u6) {
         return NAMES[self.int()];
     }
 
+    pub fn fromName(name_: [2]u8) !Square {
+        const rank_ = try Rank.fromChar(name_[1]);
+        const file_ = try File.fromLowercaseChar(name_[0]);
+        return Square.fromRankAndFile(rank_, file_);
+    }
+
     pub fn buildMask(self: Square, acc: Bitboard, next: fn (Square) ?Square) Bitboard {
         const nextSquare = next(self) orelse return acc;
         return nextSquare.buildMask(acc | nextSquare.mask(), next);
