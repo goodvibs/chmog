@@ -41,6 +41,10 @@ pub const Board = struct {
         return res;
     }
 
+    pub fn occupiedMask(self: *const Board) Bitboard {
+        return self.pieceMasks[0];
+    }
+
     pub fn pieceMask(self: *const Board, piece: Piece) Bitboard {
         return self.pieceMasks[@as(usize, piece.int())];
     }
