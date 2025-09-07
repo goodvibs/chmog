@@ -18,7 +18,7 @@ pub fn multiPawnPushes(pawns: Bitboard, comptime color: Color) Bitboard {
     }
 }
 
-pub fn multiPawnAttacks(pawns: Bitboard, comptime color: Color) Bitboard {
+pub fn multiPawnAttacks(pawns: Bitboard, color: Color) Bitboard {
     if (color == Color.White) {
         return ((pawns << 7) & ~FILE_A) | ((pawns << 9) & ~FILE_H);
     } else {
