@@ -22,7 +22,8 @@ pub const Rank = enum(u3) {
 
     pub fn fromChar(char_: u8) !Rank {
         if (char_ < '1' or char_ > '8') return error.InvalidChar;
-        return Rank.fromInt(7 - (char_ - '1'));
+        const sevenMinusInt: u3 = @truncate(char_ - '1');
+        return Rank.fromInt(7 - sevenMinusInt);
     }
 };
 

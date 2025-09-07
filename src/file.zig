@@ -26,12 +26,14 @@ pub const File = enum(u3) {
 
     pub fn fromLowercaseChar(char: u8) !File {
         if (char < 'a' or char > 'h') return error.InvalidChar;
-        return File.fromInt(char - 'a');
+        const int_: u3 = @truncate(char - 'a');
+        return File.fromInt(int_);
     }
 
     pub fn fromUppercaseChar(char: u8) !File {
         if (char < 'A' or char > 'H') return error.InvalidChar;
-        return File.fromInt(char - 'A');
+        const int_: u3 = @truncate(char - 'A');
+        return File.fromInt(int_);
     }
 };
 
