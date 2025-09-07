@@ -49,8 +49,12 @@ pub const Board = struct {
         return self.colorMasks[@as(usize, color.int())];
     }
 
-    pub fn xorColor(self: *Board, color: Color, mask: Bitboard) void {
-        self.colorMasks[@as(usize, color.int())] ^= mask;
+    pub fn mask(self: *const Board, piece: Piece, color: Color) Bitboard {
+        return self.pieceMask(piece) & self.colorMask(color);
+    }
+
+    pub fn xorColor(self: *Board, color: Color, mask_: Bitboard) void {
+        self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
     pub fn togglePiece(self: *Board, piece: Piece, at: Square) void {
@@ -59,7 +63,7 @@ pub const Board = struct {
         self.partialZobristHash ^= key;
     }
 
-    pub fn xorOccupied(self: *Board, mask: Bitboard) void {
-        self.pieceMasks[0] ^= mask;
+    pub fn xorOccupied(self: *Board, mask_: Bitboard) void {
+        self.pieceMasks[0] ^= mask_;
     }
 };
