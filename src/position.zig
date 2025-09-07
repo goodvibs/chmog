@@ -43,7 +43,7 @@ pub const Position = struct {
         return &self.contexts.items[self.contexts.items.len - 1];
     }
 
-    pub fn addLegalKnightMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
+    fn addLegalKnightMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
         const movableKnights = self.board.mask(Piece.Knight, self.sideToMove) & ~self.context().pinned;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
 
@@ -61,7 +61,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn addLegalSlidingPieceMoves(self: *const Position, comptime piece: Piece, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
+    fn addLegalSlidingPieceMoves(self: *const Position, comptime piece: Piece, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
         const movablePieces = self.board.mask(piece, self.sideToMove);
         const occupiedMask = self.board.occupiedMask();
         const currentSidePieces = self.board.colorMask(self.sideToMove);
@@ -92,7 +92,7 @@ pub const Position = struct {
         }
     }
 
-    pub fn addLegalKingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
+    fn addLegalKingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
         const source = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch return error.MultipleKingsForColor;
         const attacks = singleKingAttacks(source);
         var destMasksIter = iterSetBits(attacks);
