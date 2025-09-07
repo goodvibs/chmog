@@ -100,4 +100,23 @@ pub fn build(b: *Build) void {
         runMagic.addArgs(args);
     }
     runMagicStep.dependOn(&runMagic.step);
+
+    // Expose other scripts
+    const moveDirectionMod = b.createModule(.{
+        .root_source_file = b.path("bin/moveDirection.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    moveDirectionMod.addImport("chmog", fullLibMod);
+    moveDirectionMod.addImport("clap", clap.module("clap"));
+    const moveDirectionExec = b.addExecutable(.{
+        .name = "get-move-direction",
+        .root_module = moveDirectionMod,
+    });
+    const moveDirectionRun = b.addRunArtifact(moveDirectionExec);
+    if (b.args) |args| {
+        moveDirectionRun.addArgs(args);
+    }
+    const moveDirectionStep = b.step("get-move-direction", "Get move direction");
+    moveDirectionStep.dependOn(&moveDirectionRun.step);
 }
