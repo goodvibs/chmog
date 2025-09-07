@@ -11,10 +11,11 @@ pub const DecisiveResultReason = @import("gameResult.zig").DecisiveResultReason;
 pub const DrawResultReason = @import("gameResult.zig").DrawResultReason;
 pub const Rank = @import("rank.zig").Rank;
 pub const Square = @import("square.zig").Square;
+pub const Move = @import("move/mod.zig").Move;
+pub const MoveFlag = @import("move/flag.zig").MoveFlag;
 
 pub const attacks = @import("attacks/mod.zig");
 pub const masks = @import("masks.zig");
-pub const move = @import("move/mod.zig");
 pub const utils = @import("utils/mod.zig");
 pub const zobrist = @import("zobrist/mod.zig");
 
