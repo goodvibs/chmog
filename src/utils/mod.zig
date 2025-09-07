@@ -3,6 +3,7 @@ pub const bbToCb = @import("bitboard.zig").bbToCb;
 pub const cbToBb = @import("bitboard.zig").cbToBb;
 pub const renderBitboard = @import("bitboard.zig").renderBitboard;
 pub const edgeToEdge = @import("bitboard.zig").edgeToEdge;
+pub const between = @import("bitboard.zig").between;
 pub const iterSetBits = @import("bitboard.zig").iterSetBits;
 pub const iterBitCombinations = @import("bitboard.zig").iterBitCombinations;
 pub const MaskBitsIterator = @import("bitboard.zig").MaskBitsIterator;
