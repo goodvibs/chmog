@@ -82,7 +82,7 @@ pub const KnightMoveDirection = enum(u3) {
 
         if (absValueChange == 15) {
             positiveDirection = KnightMoveDirection.TwoDownOneLeft;
-        } else if (absValueChange == 6) {
+        } else if (absValueChange == 6 and from.rank() != to.rank()) {
             positiveDirection = KnightMoveDirection.TwoLeftOneDown;
         } else if (absValueChange == 17) {
             positiveDirection = KnightMoveDirection.TwoDownOneRight;
