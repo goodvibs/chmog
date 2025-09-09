@@ -82,15 +82,16 @@ pub const Board = struct {
         const occupied = self.occupiedMask();
         const attackers = self.colorMask(byColor);
 
-        const attackingPawns = multiPawnAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn) & attackers;
-        const attackingKnights = multiKnightAttacks(mask_) & self.pieceMask(Piece.Knight) & attackers;
-        const attackingKing = multiKingAttacks(mask_) & self.pieceMask(Piece.King) & attackers;
-        if (attackingPawns != 0 or attackingKnights != 0 or attackingKing != 0) {
+        const relevantPawnsMask = multiPawnAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn);
+        const relevantKnightsMask = multiKnightAttacks(mask_) & self.pieceMask(Piece.Knight);
+        const relevantKingsMask = multiKingAttacks(mask_) & self.pieceMask(Piece.King);
+
+        if ((relevantPawnsMask | relevantKnightsMask | relevantKingsMask) & attackers != 0) {
             return true;
         } else {
-            const attackingQueens = self.pieceMask(Piece.Queen) & attackers;
-            const diagonalAttackers = (self.pieceMask(Piece.Bishop) | attackingQueens) & attackers;
-            const orthogonalAttackers = (self.pieceMask(Piece.Rook) | attackingQueens) & attackers;
+            const queens = self.pieceMask(Piece.Queen);
+            const diagonalAttackers = (self.pieceMask(Piece.Bishop) | queens) & attackers;
+            const orthogonalAttackers = (self.pieceMask(Piece.Rook) | queens) & attackers;
 
             var defendersSquaresMasksIter = iterSetBits(mask_);
             while (defendersSquaresMasksIter.next()) |defendingSquareMask| {
