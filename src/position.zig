@@ -146,20 +146,38 @@ pub const Position = struct {
     }
 
     fn kingsideCastlingOccupied(self: *const Position) bool {
-        return self.board.occupiedMask() & KINGSIDE_CASTLING_SPACE_BY_COLOR[@as(usize, self.sideToMove)] != 0;
+        return self.board.occupiedMask() & KINGSIDE_CASTLING_GAP_MASK_BY_COLOR[@as(usize, self.sideToMove.int())] != 0;
     }
 
     fn queensideCastlingOccupied(self: *const Position) bool {
-        return self.board.occupiedMask() & QUEENSIDE_CASTLING_SPACE_BY_COLOR[@as(usize, self.sideToMove)] != 0;
+        return self.board.occupiedMask() & QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR[@as(usize, self.sideToMove.int())] != 0;
+    }
+
+    fn kingsideCastlingInCheck(self: *const Position) bool {
+        return self.board.isMaskAttacked(KINGSIDE_CASTLING_CHECK_MASK_BY_COLOR[@as(usize, self.sideToMove.int())], self.sideToMove.other());
+    }
+
+    fn queensideCastlingInCheck(self: *const Position) bool {
+        return self.board.isMaskAttacked(QUEENSIDE_CASTLING_CHECK_MASK_BY_COLOR[@as(usize, self.sideToMove.int())], self.sideToMove.other());
     }
 };
 
-const KINGSIDE_CASTLING_SPACE_BY_COLOR = [2]Bitboard{
+const KINGSIDE_CASTLING_GAP_MASK_BY_COLOR = [2]Bitboard{
     Square.F1.mask() | Square.G1.mask(),
     Square.F8.mask() | Square.G8.mask(),
 };
 
-const QUEENSIDE_CASTLING_SPACE_BY_COLOR = [2]Bitboard{
+const QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR = [2]Bitboard{
     Square.D1.mask() | Square.C1.mask() | Square.B1.mask(),
     Square.D8.mask() | Square.C8.mask() | Square.B8.mask(),
+};
+
+const KINGSIDE_CASTLING_CHECK_MASK_BY_COLOR = [2]Bitboard{
+    Square.E1.mask() | KINGSIDE_CASTLING_GAP_MASK_BY_COLOR[0],
+    Square.E8.mask() | KINGSIDE_CASTLING_GAP_MASK_BY_COLOR[1],
+};
+
+const QUEENSIDE_CASTLING_CHECK_MASK_BY_COLOR = [2]Bitboard{
+    Square.E1.mask() | QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR[0] ^ Square.B1.mask(),
+    Square.E8.mask() | QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR[1] ^ Square.B8.mask(),
 };
