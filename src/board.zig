@@ -6,6 +6,13 @@ const Color = @import("./mod.zig").Color;
 const Square = @import("./mod.zig").Square;
 const computeBoardZobristHash = @import("./mod.zig").zobrist.computeBoardZobristHash;
 const zobristKeyForPieceSquare = @import("./mod.zig").zobrist.zobristKeyForPieceSquare;
+const multiPawnAttacks = @import("./mod.zig").attacks.multiPawnAttacks;
+const multiKnightAttacks = @import("./mod.zig").attacks.multiKnightAttacks;
+const multiKingAttacks = @import("./mod.zig").attacks.multiKingAttacks;
+const singleBishopAttacks = @import("./mod.zig").attacks.singleBishopAttacks;
+const singleRookAttacks = @import("./mod.zig").attacks.singleRookAttacks;
+const iterSetBits = @import("./mod.zig").utils.iterSetBits;
+const between = @import("./mod.zig").utils.between;
 
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
@@ -69,5 +76,42 @@ pub const Board = struct {
 
     pub fn xorOccupied(self: *Board, mask_: Bitboard) void {
         self.pieceMasks[0] ^= mask_;
+    }
+
+    pub fn isMaskAttacked(self: *const Board, mask_: Bitboard, byColor: Color) bool {
+        const occupied = self.occupiedMask();
+        const attackers = self.colorMask(byColor);
+
+        const attackingPawns = multiPawnAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn) & attackers;
+        const attackingKnights = multiKnightAttacks(mask_) & self.pieceMask(Piece.Knight) & attackers;
+        const attackingKing = multiKingAttacks(mask_) & self.pieceMask(Piece.King) & attackers;
+        if (attackingPawns != 0 or attackingKnights != 0 or attackingKing != 0) {
+            return true;
+        } else {
+            const attackingQueens = self.pieceMask(Piece.Queen) & attackers;
+            const diagonalAttackers = (self.pieceMask(Piece.Bishop) | attackingQueens) & attackers;
+            const orthogonalAttackers = (self.pieceMask(Piece.Rook) | attackingQueens) & attackers;
+
+            var defendersSquaresMasksIter = iterSetBits(mask_);
+            while (defendersSquaresMasksIter.next()) |defendingSquareMask| {
+                const defenderSquare = Square.fromMask(defendingSquareMask) catch unreachable;
+                const relevantDiagonals = defenderSquare.diagonalsMask();
+                const relevantOrthogonals = defenderSquare.orthogonalsMask();
+
+                const relevantSlidingAttackers =
+                    (diagonalAttackers & relevantDiagonals) | (orthogonalAttackers & relevantOrthogonals);
+
+                var attackersSquareMasksIter = iterSetBits(relevantSlidingAttackers);
+                while (attackersSquareMasksIter.next()) |attackerSquareMask| {
+                    const attackerSquare = Square.fromMask(attackerSquareMask) catch unreachable;
+                    const blockers = between(defenderSquare, attackerSquare) & occupied;
+                    if (blockers == 0) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
     }
 };
