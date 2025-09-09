@@ -34,11 +34,11 @@ pub const CastlingRights = packed struct {
 
     pub fn kingsideForColor(self: CastlingRights, color: Color) bool {
         const mask_ = self.mask();
-        return mask_ & (@as(u4, 1) << (1 + 2 * @as(u2, color.int())));
+        return mask_ & (@as(u4, 1) << (1 + 2 * @as(u2, color.int()))) != 0;
     }
 
     pub fn queensideForColor(self: CastlingRights, color: Color) bool {
         const mask_ = self.mask();
-        return mask_ & (@as(u4, 1) << (0 + 2 * @as(u2, color.int())));
+        return mask_ & (@as(u4, 1) << (0 + 2 * @as(u2, color.int()))) != 0;
     }
 };
