@@ -132,4 +132,15 @@ pub const Position = struct {
             return true;
         }
     }
+
+    fn addLegalCastlingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
+        const castlingRights = self.context().castlingRights;
+        if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingOccupied() and !self.kingsideCastlingInCheck()) {
+            try moves.append(allocator, Move.kingsideCastling(self.sideToMove));
+        }
+
+        if (castlingRights.queensideForColor(self.sideToMove) and !self.queensideCastlingOccupied() and !self.queensideCastlingInCheck()) {
+            try moves.append(allocator, Move.queensideCastling(self.sideToMove));
+        }
+    }
 };
