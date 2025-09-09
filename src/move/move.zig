@@ -1,8 +1,19 @@
 const std = @import("std");
 
+const Color = @import("../mod.zig").Color;
 const Square = @import("../mod.zig").Square;
 const PromotionPiece = @import("../mod.zig").PromotionPiece;
 const MoveFlag = @import("mod.zig").MoveFlag;
+
+const KINGSIDE_CASTLING_BY_COLOR = [2]Move{
+    Move.newNonPromotion(Square.E1, Square.G1, MoveFlag.Castling),
+    Move.newNonPromotion(Square.E8, Square.G8, MoveFlag.Castling),
+};
+
+const QUEENSIDE_CASTLING_BY_COLOR = [2]Move{
+    Move.newNonPromotion(Square.E1, Square.C1, MoveFlag.Castling),
+    Move.newNonPromotion(Square.E8, Square.C8, MoveFlag.Castling),
+};
 
 pub const Move = packed struct {
     from: Square,
@@ -28,6 +39,14 @@ pub const Move = packed struct {
             .promotion = promotion,
             .flag = MoveFlag.Promotion,
         };
+    }
+
+    pub fn kingsideCastling(color: Color) Move {
+        return KINGSIDE_CASTLING_BY_COLOR[@as(usize, color.int())];
+    }
+
+    pub fn queensideCastling(color: Color) Move {
+        return QUEENSIDE_CASTLING_BY_COLOR[@as(usize, color.int())];
     }
 
     pub fn uci(self: Move, buffer: []u8) ![]const u8 {
