@@ -1,24 +1,26 @@
+const Color = @import("./mod.zig").Color;
+
 pub const CastlingRights = packed struct {
-    white_kingside: bool,
-    white_queenside: bool,
-    black_kingside: bool,
-    black_queenside: bool,
+    whiteKingside: bool,
+    whiteQueenside: bool,
+    blackKingside: bool,
+    blackQueenside: bool,
 
     pub fn none() CastlingRights {
         return CastlingRights{
-            .white_kingside = false,
-            .white_queenside = false,
-            .black_kingside = false,
-            .black_queenside = false,
+            .whiteKingside = false,
+            .whiteQueenside = false,
+            .blackKingside = false,
+            .blackQueenside = false,
         };
     }
 
     pub fn all() CastlingRights {
         return CastlingRights{
-            .white_kingside = true,
-            .white_queenside = true,
-            .black_kingside = true,
-            .black_queenside = true,
+            .whiteKingside = true,
+            .whiteQueenside = true,
+            .blackKingside = true,
+            .blackQueenside = true,
         };
     }
 
@@ -28,5 +30,15 @@ pub const CastlingRights = packed struct {
 
     pub fn fromMask(mask_: u4) CastlingRights {
         return @bitCast(mask_);
+    }
+
+    pub fn kingsideForColor(self: CastlingRights, color: Color) bool {
+        const mask_ = self.mask();
+        return mask_ & (@as(u4, 1) << (1 + 2 * @as(u2, color.int())));
+    }
+
+    pub fn queensideForColor(self: CastlingRights, color: Color) bool {
+        const mask_ = self.mask();
+        return mask_ & (@as(u4, 1) << (0 + 2 * @as(u2, color.int())));
     }
 };
