@@ -135,6 +135,7 @@ pub const Position = struct {
 
     fn addLegalCastlingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
         const castlingRights = self.context().castlingRights;
+
         if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingOccupied() and !self.kingsideCastlingInCheck()) {
             try moves.append(allocator, Move.kingsideCastling(self.sideToMove));
         }
@@ -143,4 +144,22 @@ pub const Position = struct {
             try moves.append(allocator, Move.queensideCastling(self.sideToMove));
         }
     }
+
+    fn kingsideCastlingOccupied(self: *const Position) bool {
+        return self.board.occupiedMask() & KINGSIDE_CASTLING_SPACE_BY_COLOR[@as(usize, self.sideToMove)] != 0;
+    }
+
+    fn queensideCastlingOccupied(self: *const Position) bool {
+        return self.board.occupiedMask() & QUEENSIDE_CASTLING_SPACE_BY_COLOR[@as(usize, self.sideToMove)] != 0;
+    }
+};
+
+const KINGSIDE_CASTLING_SPACE_BY_COLOR = [2]Bitboard{
+    Square.F1.mask() | Square.G1.mask(),
+    Square.F8.mask() | Square.G8.mask(),
+};
+
+const QUEENSIDE_CASTLING_SPACE_BY_COLOR = [2]Bitboard{
+    Square.D1.mask() | Square.C1.mask() | Square.B1.mask(),
+    Square.D8.mask() | Square.C8.mask() | Square.B8.mask(),
 };
