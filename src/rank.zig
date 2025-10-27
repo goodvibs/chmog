@@ -25,6 +25,24 @@ pub const Rank = enum(u3) {
         const sevenMinusInt: u3 = @truncate(char_ - '1');
         return Rank.fromInt(7 - sevenMinusInt);
     }
+
+    pub fn up(self: Rank) !Rank {
+        return self.upN(1);
+    }
+
+    pub fn down(self: Rank) !Rank {
+        return self.downN(1);
+    }
+
+    pub fn upN(self: Rank, n: u3) !Rank {
+        if (n > self.int()) return error.InvalidRank;
+        return Rank.fromInt(self.int() - n);
+    }
+
+    pub fn downN(self: Rank, n: u3) !Rank {
+        if (n > Rank.One.int() - self.int()) return error.InvalidRank;
+        return Rank.fromInt(self.int() + n);
+    }
 };
 
 const testing = @import("std").testing;

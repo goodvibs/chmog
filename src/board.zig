@@ -17,13 +17,13 @@ const between = @import("./mod.zig").utils.between;
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
     colorMasks: [2]Bitboard,
-    partialZobristHash: Bitboard,
+    zobristHash: Bitboard,
 
     pub fn blank() Board {
         return Board{
             .pieceMasks = std.mem.zeroes([7]Bitboard),
             .colorMasks = std.mem.zeroes([2]Bitboard),
-            .partialZobristHash = 0,
+            .zobristHash = 0,
         };
     }
 
@@ -42,9 +42,9 @@ pub const Board = struct {
                 masks.STARTING_WHITE,
                 masks.STARTING_BLACK,
             },
-            .partialZobristHash = 0,
+            .zobristHash = 0,
         };
-        res.partialZobristHash = computeBoardZobristHash(&res);
+        res.zobristHash = computeBoardZobristHash(&res);
         return res;
     }
 
@@ -64,17 +64,17 @@ pub const Board = struct {
         return self.pieceMask(piece) & self.colorMask(color);
     }
 
-    pub fn xorColor(self: *Board, color: Color, mask_: Bitboard) void {
+    pub fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
-    pub fn togglePiece(self: *Board, piece: Piece, at: Square) void {
+    pub fn togglePieceAt(self: *Board, piece: Piece, at: Square) void {
         self.pieceMasks[@as(usize, piece.int())] ^= at.mask();
         const key = zobristKeyForPieceSquare(piece, at);
-        self.partialZobristHash ^= key;
+        self.zobristHash ^= key;
     }
 
-    pub fn xorOccupied(self: *Board, mask_: Bitboard) void {
+    pub fn xorOccupiedMask(self: *Board, mask_: Bitboard) void {
         self.pieceMasks[0] ^= mask_;
     }
 

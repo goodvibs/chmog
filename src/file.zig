@@ -35,6 +35,24 @@ pub const File = enum(u3) {
         const int_: u3 = @truncate(char - 'A');
         return File.fromInt(int_);
     }
+
+    pub fn left(self: File) !File {
+        return self.leftN(1);
+    }
+
+    pub fn right(self: File) !File {
+        return self.rightN(1);
+    }
+
+    pub fn leftN(self: File, n: u3) !File {
+        if (n > self.int()) return error.InvalidFile;
+        return File.fromInt(self.int() - n);
+    }
+
+    pub fn rightN(self: File, n: u3) !File {
+        if (n > (File.H.int() - self.int())) return error.InvalidFile;
+        return File.fromInt(self.int() + n);
+    }
 };
 
 const testing = @import("std").testing;

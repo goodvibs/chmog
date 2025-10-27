@@ -6,6 +6,14 @@ pub const Color = enum(u1) {
         return @enumFromInt(index);
     }
 
+    pub fn fromIsWhite(isWhite: bool) Color {
+        return Color.fromInt(@intFromBool(!isWhite));
+    }
+
+    pub fn fromIsBlack(isBlack: bool) Color {
+        return Color.fromInt(@intFromBool(isBlack));
+    }
+
     pub fn int(self: Color) u1 {
         return @intFromEnum(self);
     }
