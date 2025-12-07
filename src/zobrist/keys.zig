@@ -28,7 +28,10 @@ const enPassantFileKeys = ZOBRIST_KEYS_ARRAY[NUM_PIECE_SQUARE_KEYS .. NUM_PIECE_
 const castlingRightsKeys = ZOBRIST_KEYS_ARRAY[NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS .. NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS + NUM_CASTLING_RIGHTS_KEYS];
 const sideToMoveKey = ZOBRIST_KEYS_ARRAY[NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS + NUM_CASTLING_RIGHTS_KEYS];
 
-pub fn zobristKeyForPieceSquare(piece: Piece, square: Square) Bitboard {
+pub fn zobristKeyForPieceSquare(piece: Piece, square: Square) !Bitboard {
+    if (piece == Piece.Null) {
+        return error.InvalidZobristKey;
+    }
     return pieceSquareKeys[@as(usize, piece.int() - 1) * 64 + @as(usize, square.int())];
 }
 
@@ -38,7 +41,7 @@ pub fn zobristKeyForEnPassantFile(enPassantFile: ?File) Bitboard {
 
 pub fn zobristKeyForCastlingRights(castlingRights: CastlingRights) Bitboard {
     const mask = castlingRights.mask();
-    return if (mask != 0) castlingRightsKeys[@as(usize, mask - 1)] else 0;
+    return if (mask == 0) 0 else castlingRightsKeys[@as(usize, mask - 1)];
 }
 
 pub fn zobristKeyForSideToMove(sideToMove: Color) Bitboard {

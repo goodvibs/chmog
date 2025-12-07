@@ -19,7 +19,7 @@ pub fn computeBoardZobristHash(board: *const Board) Bitboard {
         for (0..@popCount(mask)) |_| {
             const squareMask = iter.next() orelse unreachable;
             const square = Square.fromMask(squareMask) catch unreachable;
-            const key = zobristKeyforPieceSquare(piece, square);
+            const key = zobristKeyforPieceSquare(piece, square) catch unreachable;
             hash ^= key;
         }
     }

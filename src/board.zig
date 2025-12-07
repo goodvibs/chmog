@@ -68,9 +68,9 @@ pub const Board = struct {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
-    pub fn togglePieceAt(self: *Board, piece: Piece, at: Square) void {
+    pub fn togglePieceAt(self: *Board, piece: Piece, at: Square) !void {
         self.pieceMasks[@as(usize, piece.int())] ^= at.mask();
-        const key = zobristKeyForPieceSquare(piece, at);
+        const key = try zobristKeyForPieceSquare(piece, at);
         self.zobristHash ^= key;
     }
 
