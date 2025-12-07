@@ -7,51 +7,73 @@ const Position = @import("./mod.zig").Position;
 const PositionContext = @import("./mod.zig").PositionContext;
 const Rank = @import("./mod.zig").Rank;
 const File = @import("./mod.zig").File;
-const splitAny = @import("std").mem.splitAny;
+const splitScalar = @import("std").mem.splitScalar;
 const trim = @import("std").mem.trim;
 const ArrayList = @import("std").ArrayList;
 const Allocator = @import("std").mem.Allocator;
 
+const FIELD_COUNT = 6;
+const MAX_CHARS_IN_BOARD = 8 * 8 + 7;
+const MAX_CHARS_IN_CASTLING_RIGHTS = 4;
+const NUM_TURN_CHARS = 1;
+const MAX_CHARS_IN_EN_PASSANT_SQUARE = 2;
+const MAX_CHARS_IN_HALFMOVE_CLOCK = 3;
+const MAX_CHARS_IN_FULLMOVE = 3;
+const NUMBER_OF_FIELD_DELIMETERS = FIELD_COUNT - 1;
+const MAX_CHARS = MAX_CHARS_IN_BOARD + NUM_TURN_CHARS + MAX_CHARS_IN_CASTLING_RIGHTS + MAX_CHARS_IN_EN_PASSANT_SQUARE + MAX_CHARS_IN_HALFMOVE_CLOCK + MAX_CHARS_IN_FULLMOVE + NUMBER_OF_FIELD_DELIMETERS;
+const MAX_CHARS_PER_FIELD = [6]usize{ MAX_CHARS_IN_BOARD, NUM_TURN_CHARS, MAX_CHARS_IN_CASTLING_RIGHTS, MAX_CHARS_IN_EN_PASSANT_SQUARE, MAX_CHARS_IN_HALFMOVE_CLOCK, MAX_CHARS_IN_FULLMOVE };
+
 pub const FenError = error{
-    InvalidBoard,
+    TooManyChars,
+    TooManyCharsInBoard,
+    ZeroNotAllowedInBoardRow,
+    NineNotAllowedInBoardRow,
+    BoardRowLengthExceeded,
+    InvalidPieceInBoardRow,
     InvalidSideToMove,
-    InvalidCastling,
+    InvalidCastlingRightsChar,
+    RepeatedCastlingRightsChar,
+    CastlingRightsMoreThan4Chars,
     InvalidEnPassantSquare,
+    EnPassantSquareMoreThan2Chars,
     InvalidHalfmoveClock,
+    HalfmoveClockMoreThan3Chars,
     InvalidFullmove,
+    FullmoveMoreThan3Chars,
     InvalidFieldCount,
 };
 
-fn parseFenBoard(fenBoard: []const u8) !Board {
-    var board: Board = Board.blank();
-    var rank = Rank.Eight;
-    var file = File.A;
-    var isRankFilled = false;
-    var wasNumber = false;
-    for (fenBoard) |char| {
+fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
+    if (fenBoardRow.len > 8) {
+        return FenError.BoardRowLengthExceeded;
+    }
+    const file = File.A;
+    var wasNumberLast = false;
+    for (fenBoardRow) |char| {
         switch (char) {
-            '0'...'9' => {
-                const count = char - '0';
-                if (isRankFilled or count == 0 or count > 8 or 8 - file.int() < count) {
-                    return FenError.InvalidBoard;
-                }
+            '0' => {
+                return FenError.ZeroNotAllowedInBoardRow;
             },
-            '/' => {
-                if (isRankFilled and rank != Rank.Eight) {
-                    rank = rank.down() catch unreachable;
-                } else {
-                    return FenError.InvalidBoard;
+            '9' => {
+                return FenError.NineNotAllowedInBoardRow;
+            },
+            '1'...'8' => {
+                const gapValue = char - '0';
+                if (gapValue > File.H.int() - file.int()) {
+                    return FenError.BoardRowLengthExceeded;
                 }
+                file = File.fromInt(file.int() + gapValue);
+                wasNumberLast = true;
             },
             else => {
                 if (file == File.H) {
-                    return FenError.InvalidBoard;
+                    return FenError.BoardRowLengthExceeded;
                 }
                 const isUpper = char >= 'A';
 
                 const piece = if (isUpper) Piece.fromUppercaseAscii(char) else Piece.fromLowercaseAscii(char);
                 if (piece == Piece.Null) {
-                    return FenError.InvalidBoard;
+                    return FenError.InvalidPieceInBoardRow;
                 }
 
                 const color = Color.fromIsWhite(isUpper);
@@ -61,14 +83,29 @@ fn parseFenBoard(fenBoard: []const u8) !Board {
                 board.xorColorMask(color, square.mask());
                 board.xorOccupiedMask(square.mask());
 
-                file = file.right() catch blk: {
-                    isRankFilled = true;
-                    break :blk File.A;
-                };
+                file = file.right() catch File.A;
             },
         }
     }
-    return board;
+}
+
+fn parseFenBoard(fenBoard: []const u8) !Board {
+    if (fenBoard.len <= MAX_CHARS_IN_BOARD) {
+        var board: Board = Board.blank();
+        const rank = Rank.Eight;
+        var rowStartCharIndex = 0;
+        for (0..fenBoard.length) |charIndex| {
+            const char = fenBoard[charIndex];
+            if (char == '/') {
+                try parseFenBoardRow(fenBoard[rowStartCharIndex..charIndex], rank, &board);
+                rowStartCharIndex = charIndex + 1;
+            }
+        }
+        try parseFenBoardRow(fenBoard[rowStartCharIndex..], rank, &board);
+        return board;
+    } else {
+        return FenError.TooManyCharsInBoard;
+    }
 }
 
 fn parseFenTurn(fenTurn: []const u8) !Color {
@@ -92,15 +129,15 @@ fn parseFenCastling(fenCastling: []const u8) !CastlingRights {
                 'Q' => res.whiteQueenside = true,
                 'k' => res.blackKingside = true,
                 'q' => res.blackQueenside = true,
-                else => return FenError.InvalidCastlingRights,
+                else => return FenError.InvalidCastlingRightsChar,
             }
             if (old == res.mask()) {
-                return FenError.InvalidCastlingRights;
+                return FenError.RepeatedCastlingRightsChar;
             }
         }
         return res;
     } else {
-        return FenError.InvalidCastlingRights;
+        return FenError.CastlingRightsMoreThan4Chars;
     }
 }
 
@@ -113,46 +150,58 @@ fn parseFenEnPassantSquare(fenEnPassantSquare: []const u8) !?Square {
     {
         return null;
     } else {
-        return FenError.InvalidEnPassantSquare;
+        return FenError.EnPassantSquareMoreThan2Chars;
     }
 }
 
 fn parseFenHalfmoveClock(fenHalfmoveClock: []const u8) !u7 {
-    var int: u10 = 0;
-    for (fenHalfmoveClock) |char| {
-        if (char < '0' or char > '9') {
-            return FenError.InvalidHalfmoveClock;
-        } else {
-            int *= 10;
-            int += char - '0';
+    if (fenHalfmoveClock.len <= 3) {
+        var int: u10 = 0;
+        for (fenHalfmoveClock) |char| {
+            if (char < '0' or char > '9') {
+                return FenError.InvalidHalfmoveClock;
+            } else {
+                int *= 10;
+                int += char - '0';
+            }
+            if (int > 100) {
+                return FenError.InvalidHalfmoveClock;
+            }
         }
-        if (int > 100) {
-            return FenError.InvalidHalfmoveClock;
-        }
+        return @truncate(int);
+    } else {
+        return FenError.HalfmoveClockMoreThan3Chars;
     }
-    return @truncate(int);
 }
 
 fn parseFenFullmove(fenFullmove: []const u8) !u9 {
-    var int: u12 = 0;
-    for (fenFullmove) |char| {
-        if (char < '0' or char > '9') {
-            return FenError.InvalidFullmove;
-        } else {
-            int *= 10;
-            int += char - '0';
+    if (fenFullmove.len <= 3) {
+        var int: u12 = 0;
+        for (fenFullmove) |char| {
+            if (char < '0' or char > '9') {
+                return FenError.InvalidFullmove;
+            } else {
+                int *= 10;
+                int += char - '0';
+            }
+            if (int > 400) {
+                return FenError.InvalidFullmove;
+            }
         }
-        if (int > 400) {
-            return FenError.InvalidFullmove;
-        }
+        return @truncate(int);
+    } else {
+        return FenError.FullmoveMoreThan3Chars;
     }
-    return @truncate(int);
 }
 
 pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Position {
-    const trimmedFen = trim(u8, fen, " ");
+    const trimmedFen = trim(u8, fen, [_]u8{ " ", "\n", "\r", "\t" });
 
-    const rawFenParts = splitAny(u8, trimmedFen, " ");
+    if (trimmedFen.len > MAX_CHARS) {
+        return FenError.TooManyChars;
+    }
+
+    const rawFenParts = splitScalar(u8, trimmedFen, ' ', NUMBER_OF_FIELD_DELIMETERS);
 
     var fenParts: [6][]const u8 = undefined;
     var fenPartsCounter: usize = 0;
@@ -199,13 +248,23 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 
     const pos = Position{
         .board = board,
-        .contexts = ArrayList(PositionContext).initCapacity(allocator, contextsCapacity),
+        .contexts = ArrayList(PositionContext).initCapacity(alloc, contextsCapacity),
         .halfmove = fullmoveToHalfmove(fullmove, turn),
         .gameResult = gameResult,
         .sideToMove = turn,
     };
 
+    try pos.contexts.append(positionContext);
+
     try pos.validate();
 
     return pos;
+}
+
+fn fullmoveToHalfmove(fullmove: u9, turn: Color) u6 {
+    if (turn == Color.White) {
+        return fullmove;
+    } else {
+        return fullmove + 1;
+    }
 }
