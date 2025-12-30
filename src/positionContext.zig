@@ -6,7 +6,6 @@ const File = @import("./mod.zig").File;
 pub const PositionContext = struct {
     pinned: Bitboard,
     checkers: Bitboard,
-    zobristHash: Bitboard,
     castlingRights: CastlingRights,
     doublePawnPushFile: ?File,
     halfmoveClock: u7,
@@ -16,7 +15,6 @@ pub const PositionContext = struct {
         return PositionContext{
             .pinned = 0,
             .checkers = 0,
-            .zobristHash = 0,
             .castlingRights = CastlingRights.none(),
             .doublePawnPushFile = null,
             .halfmoveClock = 0,

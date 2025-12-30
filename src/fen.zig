@@ -231,13 +231,11 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 
     const pinned = undefined;
     const checkers = undefined;
-    const zobristHash = undefined;
     const doublePawnPushFile = (enPassantSquare orelse null).file();
 
     const positionContext = PositionContext{
         .pinned = pinned,
         .checkers = checkers,
-        .zobristHash = zobristHash,
         .castlingRights = castling,
         .doublePawnPushFile = doublePawnPushFile,
         .halfmoveClock = halfmoveClock,

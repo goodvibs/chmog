@@ -4,8 +4,6 @@ const masks = @import("./mod.zig").masks;
 const Piece = @import("./mod.zig").Piece;
 const Color = @import("./mod.zig").Color;
 const Square = @import("./mod.zig").Square;
-const computeBoardZobristHash = @import("./mod.zig").zobrist.computeBoardZobristHash;
-const zobristKeyForPieceSquare = @import("./mod.zig").zobrist.zobristKeyForPieceSquare;
 const multiPawnAttacks = @import("./mod.zig").attacks.multiPawnAttacks;
 const multiKnightAttacks = @import("./mod.zig").attacks.multiKnightAttacks;
 const multiKingAttacks = @import("./mod.zig").attacks.multiKingAttacks;
@@ -17,18 +15,16 @@ const between = @import("./mod.zig").utils.between;
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
     colorMasks: [2]Bitboard,
-    zobristHash: Bitboard,
 
     pub fn blank() Board {
         return Board{
             .pieceMasks = std.mem.zeroes([7]Bitboard),
             .colorMasks = std.mem.zeroes([2]Bitboard),
-            .zobristHash = 0,
         };
     }
 
     pub fn initial() Board {
-        var res = Board{
+        const res = Board{
             .pieceMasks = [7]Bitboard{
                 masks.STARTING_ALL,
                 masks.STARTING_PAWNS,
@@ -42,9 +38,7 @@ pub const Board = struct {
                 masks.STARTING_WHITE,
                 masks.STARTING_BLACK,
             },
-            .zobristHash = 0,
         };
-        res.zobristHash = computeBoardZobristHash(&res);
         return res;
     }
 
@@ -68,10 +62,8 @@ pub const Board = struct {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
-    pub fn togglePieceAt(self: *Board, piece: Piece, at: Square) !void {
+    pub fn togglePieceAt(self: *Board, piece: Piece, at: Square) void {
         self.pieceMasks[@as(usize, piece.int())] ^= at.mask();
-        const key = try zobristKeyForPieceSquare(piece, at);
-        self.zobristHash ^= key;
     }
 
     pub fn xorOccupiedMask(self: *Board, mask_: Bitboard) void {
