@@ -43,6 +43,21 @@ pub const Position = struct {
         return &self.contexts.items[self.contexts.items.len - 1];
     }
 
+    pub fn doHalfmoveAndSideToMoveAgree(self: *const Position) bool {
+        const isEven = self.halfmove % 2 == 0;
+        const isWhite = self.sideToMove == Color.White;
+        return isEven == isWhite;
+    }
+
+    pub fn isValid(self: *const Position, comptime checks: anytype) bool {
+        inline for (checks) |check| {
+            if (!check(self)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     fn addLegalKnightMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
         const movableKnights = self.board.mask(Piece.Knight, self.sideToMove) & ~self.context().pinned;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
