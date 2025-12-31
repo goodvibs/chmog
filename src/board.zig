@@ -85,10 +85,6 @@ pub const Board = struct {
         return self.pieceMask(Piece.Pawn) & (masks.RANK_1 | masks.RANK_8) == 0;
     }
 
-    pub fn hasMaxOneKingInCheck(self: *const Board) bool {
-        return self.isColorInCheck(Color.White) and self.isColorInCheck(Color.Black);
-    }
-
     pub fn isColorInCheck(self: *const Board, color: Color) bool {
         const kingSquare = self.colorMask(color) & self.pieceMask(Piece.King);
         return self.isSquareAttacked(kingSquare, color.other());
