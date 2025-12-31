@@ -49,6 +49,10 @@ pub const Position = struct {
         return isEven == isWhite;
     }
 
+    pub fn isNotInIllegalCheck(self: *const Position) bool {
+        return !self.board.isColorInCheck(self.sideToMove.other());
+    }
+
     pub fn isValid(self: *const Position, comptime checks: anytype) bool {
         inline for (checks) |check| {
             if (!check(self)) {
