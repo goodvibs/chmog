@@ -54,7 +54,7 @@ pub const Board = struct {
 
     pub fn doPieceMasksUnionToOccupiedMask(self: *const Board) bool {
         var pieceMasksUnion = 0;
-        for (self.pieceMasks[@as(Piece.Pawn.int(), usize)..]) |pieceMask_| {
+        inline for (self.pieceMasks[@as(Piece.Pawn.int(), usize)..]) |pieceMask_| {
             pieceMasksUnion |= pieceMask_;
         }
         return pieceMasksUnion;
@@ -62,13 +62,13 @@ pub const Board = struct {
 
     pub fn doPieceMasksNumSetBitsEqualOccupiedMaskNumSetBits(self: *const Board) bool {
         var numSetBits = 0;
-        for (self.pieceMasks[@as(Piece.Pawn.int(), usize)..]) |pieceMask_| {
+        inline for (self.pieceMasks[@as(Piece.Pawn.int(), usize)..]) |pieceMask_| {
             numSetBits += @popCount(pieceMask_);
         }
         return numSetBits == @popCount(self.pieceMask(Piece.Null));
     }
 
-    pub fn doMasksAgree(self: *const Board) bool {
+    pub fn doMasksNotConflict(self: *const Board) bool {
         return self.doColorMasksUnionToOccupiedMask() and
             self.doColorMasksNotConflict() and
             self.doPieceMasksUnionToOccupiedMask() and
