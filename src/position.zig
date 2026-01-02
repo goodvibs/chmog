@@ -4,6 +4,7 @@ const Move = @import("./mod.zig").Move;
 const MoveFlag = @import("./mod.zig").MoveFlag;
 const Bitboard = @import("./mod.zig").Bitboard;
 const Board = @import("./mod.zig").Board;
+const Rank = @import("./mod.zig").Rank;
 const Piece = @import("./mod.zig").Piece;
 const Square = @import("./mod.zig").Square;
 const Color = @import("./mod.zig").Color;
@@ -20,27 +21,21 @@ const between = @import("./mod.zig").utils.between;
 
 pub const Position = struct {
     board: Board,
-    contexts: ArrayList(PositionContext),
+    currentContext: PositionContext,
+    previousContexts: ArrayList(PositionContext),
     halfmove: u10,
     gameResult: GameResult,
     sideToMove: Color,
 
-    pub fn initial(allocator: std.mem.Allocator, capacity: usize) !Position {
+    pub fn initial(allocator: std.mem.Allocator, previousContextsCapacity: usize) !Position {
         return Position{
             .board = Board.initial(),
-            .contexts = try ArrayList(PositionContext).initCapacity(allocator, capacity),
+            .currentContext = PositionContext.blank(),
+            .previousContexts = try ArrayList(PositionContext).initCapacity(allocator, previousContextsCapacity),
             .halfmove = 0,
             .gameResult = GameResult.None,
             .sideToMove = Color.White,
         };
-    }
-
-    pub fn context(self: *const Position) *const PositionContext {
-        return &self.contexts.items[self.contexts.items.len - 1];
-    }
-
-    pub fn contextMut(self: *Position) *PositionContext {
-        return &self.contexts.items[self.contexts.items.len - 1];
     }
 
     pub fn doHalfmoveAndSideToMoveAgree(self: *const Position) bool {
@@ -49,29 +44,20 @@ pub const Position = struct {
         return isEven == isWhite;
     }
 
-    pub fn areContextsValid(_: *const Position) bool {
-        return true;
+    pub fn isHalfmoveClockPlausible(self: *const Position) bool {
+        return self.currentContext.halfmoveClock <= self.halfmove;
     }
 
     pub fn isInCheckmate(self: *const Position) bool {
-        return self.moves().len == 0;
+        return self.hasMoves();
     }
 
     pub fn isNotInIllegalCheck(self: *const Position) bool {
         return !self.board.isColorInCheck(self.sideToMove.other());
     }
 
-    pub fn isValid(self: *const Position, comptime checks: anytype) bool {
-        inline for (checks) |check| {
-            if (!check(self)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     fn addLegalKnightMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
-        const movableKnights = self.board.mask(Piece.Knight, self.sideToMove) & ~self.context().pinned;
+        const movableKnights = self.board.mask(Piece.Knight, self.sideToMove) & ~self.currentContext().pinned;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
 
         var sourceMasksIter = iterSetBits(movableKnights);
@@ -106,7 +92,7 @@ pub const Position = struct {
             };
 
             var filteredAttacks = attacks & ~currentSidePieces;
-            if (sourceMask & self.context().pinned != 0) {
+            if (sourceMask & self.currentContext().pinned != 0) {
                 const attacksFilter = edgeToEdge(source, currentSideKingSquare);
                 filteredAttacks &= attacksFilter;
             }
@@ -161,7 +147,7 @@ pub const Position = struct {
     }
 
     fn addLegalCastlingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
-        const castlingRights = self.context().castlingRights;
+        const castlingRights = self.currentContext().castlingRights;
 
         if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingOccupied() and !self.kingsideCastlingInCheck()) {
             try moves.append(allocator, Move.kingsideCastling(self.sideToMove));
@@ -187,6 +173,22 @@ pub const Position = struct {
     fn queensideCastlingInCheck(self: *const Position) bool {
         return self.board.isMaskAttacked(QUEENSIDE_CASTLING_CHECK_MASK_BY_COLOR[@as(usize, self.sideToMove.int())], self.sideToMove.other());
     }
+};
+
+fn pawnsStartRankByColor(color: Color) {
+    return PAWNS_START_RANK_BY_COLOR[@as(usize, color.int())];
+}
+
+fn pawnsDoubleMoveRankByColor(color: Color) {
+    return PAWNS_DOUBLE_MOVE_RANK_BY_COLOR[@as(usize, color.int())];
+}
+
+const PAWNS_START_RANK_BY_COLOR = [2]Rank{
+    Rank.Two, Rank.Seven
+};
+
+const PAWNS_DOUBLE_MOVE_RANK_BY_COLOR = [2]Rank{
+    Rank.Four, Rank.Five
 };
 
 const KINGSIDE_CASTLING_GAP_MASK_BY_COLOR = [2]Bitboard{

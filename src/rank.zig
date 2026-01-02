@@ -1,3 +1,6 @@
+const Bitboard = @import("./mod.zig").Bitboard;
+const masks = @import("./mod.zig").masks;
+
 pub const Rank = enum(u3) {
     Eight = 0,
     Seven = 1,
@@ -14,6 +17,10 @@ pub const Rank = enum(u3) {
 
     pub fn int(self: Rank) u3 {
         return @intFromEnum(self);
+    }
+
+    pub fn mask(self: Rank) Bitboard {
+        return masks.RANKS[@as(usize, self.int())];
     }
 
     pub fn char(self: Rank) u8 {

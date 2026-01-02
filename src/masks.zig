@@ -33,7 +33,7 @@ pub const FILES: [8]Bitboard = .{
 };
 
 pub const RANKS: [8]Bitboard = .{
-    RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8,
+    RANK_8, RANK_7, RANK_6, RANK_5, RANK_4, RANK_3, RANK_2, RANK_1,
 };
 
 pub const STARTING_WP = RANK_2;

@@ -1,3 +1,6 @@
+const Bitboard = @import("./mod.zig").Bitboard;
+const masks = @import("./mod.zig").masks;
+
 pub const File = enum(u3) {
     A = 0,
     B = 1,
@@ -14,6 +17,10 @@ pub const File = enum(u3) {
 
     pub fn int(self: File) u3 {
         return @intFromEnum(self);
+    }
+
+    pub fn mask(self: File) Bitboard {
+        return masks.FILES[@as(usize, self.int())];
     }
 
     pub fn lowercaseChar(self: File) u8 {

@@ -38,6 +38,7 @@ pub const FenError = error{
     CastlingRightsMoreThan4Chars,
     InvalidEnPassantSquare,
     EnPassantSquareMoreThan2Chars,
+    EnPassantNotPossible,
     InvalidHalfmoveClock,
     HalfmoveClockMoreThan3Chars,
     InvalidFullmove,
@@ -233,10 +234,15 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     const enPassantSquare = try parseFenEnPassantSquare(fenParts[3]);
     const halfmoveClock = try parseFenHalfmoveClock(fenParts[4]);
     const fullmove = try parseFenFullmove(fenParts[5]);
+    const halfmove = fullmoveToHalfmove(fullmove, turn);
 
     const pinned = undefined;
     const checkers = undefined;
-    const doublePawnPushFile = (enPassantSquare orelse null).file();
+    const doublePawnPushFile = if (enPassantSquare) |square| {
+        if (halfmove < 1 or square.rank().mask() & board.colorMask(turn.other()) & board.pieceMask(Piece.Pawn) == 0) {
+            return FenError.EnPassantNotPossible;
+        } else square.file();
+    } else null;
 
     const positionContext = PositionContext{
         .pinned = pinned,
@@ -249,13 +255,12 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 
     const pos = Position{
         .board = board,
-        .contexts = ArrayList(PositionContext).initCapacity(alloc, contextsCapacity),
-        .halfmove = fullmoveToHalfmove(fullmove, turn),
+        .currentContext = positionContext,
+        .previousContexts = try ArrayList(PositionContext).initCapacity(alloc, contextsCapacity),
+        .halfmove = halfmove,
         .gameResult = GameResult.None,
         .sideToMove = turn,
     };
-
-    try pos.contexts.append(positionContext);
 
     assert!(pos.board.doMasksNotConflict());
 
