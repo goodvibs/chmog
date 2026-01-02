@@ -5,6 +5,7 @@ const Square = @import("./mod.zig").Square;
 const Board = @import("./mod.zig").Board;
 const Position = @import("./mod.zig").Position;
 const PositionContext = @import("./mod.zig").PositionContext;
+const GameResult = @import("./mod.zig").GameResult;
 const Rank = @import("./mod.zig").Rank;
 const File = @import("./mod.zig").File;
 const splitScalar = @import("std").mem.splitScalar;
@@ -246,13 +247,11 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         .capturedPiece = Piece.Null,
     };
 
-    const gameResult = undefined;
-
     const pos = Position{
         .board = board,
         .contexts = ArrayList(PositionContext).initCapacity(alloc, contextsCapacity),
         .halfmove = fullmoveToHalfmove(fullmove, turn),
-        .gameResult = gameResult,
+        .gameResult = GameResult.None,
         .sideToMove = turn,
     };
 
