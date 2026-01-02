@@ -8,6 +8,8 @@ const Piece = @import("./mod.zig").Piece;
 const Square = @import("./mod.zig").Square;
 const Color = @import("./mod.zig").Color;
 const GameResult = @import("./mod.zig").GameResult;
+const DecisiveResultReason = @import("./mod.zig").DecisiveResultReason;
+const DrawResultReason = @import("./mod.zig").DrawResultReason;
 const PositionContext = @import("./mod.zig").PositionContext;
 const iterSetBits = @import("./mod.zig").utils.iterSetBits;
 const multiPawnAttacks = @import("./mod.zig").attacks.multiPawnAttacks;
@@ -47,6 +49,29 @@ pub const Position = struct {
         const isEven = self.halfmove % 2 == 0;
         const isWhite = self.sideToMove == Color.White;
         return isEven == isWhite;
+    }
+
+    // pub fn areContextsValid(self: *const Position) bool {
+    //     return true;
+    // }
+
+    pub fn isGameResultPlausible(self: *const Position) bool {
+        return switch (self.gameResult) {
+                .Checkmate => self.isInCheckmate(),
+                .Resignation, .TimeUp, .Unknown => true,
+                .Checkmate => {},
+                .Resignation, .TimeUp, .Unknown => true,
+                .Stalemate => {},
+                .InsufficientMaterial => {},
+                .TimeUpVsInsufficientMaterial => {},
+                .FiftyMoveRule => self.halfmove > 100,
+                .Agreement, .Unknown => true,
+            },
+        };
+    }
+
+    pub fn isInCheckmate(self: *const Position) bool {
+        return self.moves().len == 0;
     }
 
     pub fn isNotInIllegalCheck(self: *const Position) bool {

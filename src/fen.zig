@@ -11,6 +11,7 @@ const splitScalar = @import("std").mem.splitScalar;
 const trim = @import("std").mem.trim;
 const ArrayList = @import("std").ArrayList;
 const Allocator = @import("std").mem.Allocator;
+const assert = @import("std").debug.assert;
 
 const FIELD_COUNT = 6;
 const MAX_CHARS_IN_BOARD = 8 * 8 + 7;
@@ -41,6 +42,9 @@ pub const FenError = error{
     InvalidFullmove,
     FullmoveMoreThan3Chars,
     InvalidFieldCount,
+    PawnsInFirstOrLastRank,
+    NotOneKingPerColor,
+    IsInIllegalCheck,
 };
 
 fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
@@ -254,7 +258,19 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 
     try pos.contexts.append(positionContext);
 
-    try pos.validate();
+    assert!(pos.board.doMasksNotConflict());
+
+    if (pos.board.hasNoPawnsInFirstNorLastRank()) {
+        return FenError.PawnsInFirstOrLastRank;
+    }
+
+    if (pos.board.hasOneKingPerColor()) {
+        return FenError.NotOneKingPerColor;
+    }
+
+    if (!pos.isNotInIllegalCheck()) {
+        return FenError.IsInIllegalCheck;
+    }
 
     return pos;
 }
