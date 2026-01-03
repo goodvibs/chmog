@@ -84,7 +84,7 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 }
 
                 const color = Color.fromIsWhite(isUpper);
-                const square = Square.fromRankFile(rank, file) catch unreachable;
+                const square = Square.fromRankAndFile(rank, file);
 
                 board.togglePieceAt(piece, square);
                 board.xorColorMask(color, square.mask());
@@ -101,7 +101,7 @@ fn parseFenBoard(fenBoard: []const u8) !Board {
         var board: Board = Board.blank();
         const rank = Rank.Eight;
         var rowStartCharIndex = 0;
-        for (0..fenBoard.length) |charIndex| {
+        for (0..fenBoard.len) |charIndex| {
             const char = fenBoard[charIndex];
             if (char == '/') {
                 try parseFenBoardRow(fenBoard[rowStartCharIndex..charIndex], rank, &board);
@@ -267,11 +267,11 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
     }
 
-    if (pos.board.hasNoPawnsInFirstNorLastRank()) {
+    if (!pos.board.hasNoPawnsInFirstNorLastRank()) {
         return FenError.PawnsInFirstOrLastRank;
     }
 
-    if (pos.board.hasOneKingPerColor()) {
+    if (!pos.board.hasOneKingPerColor()) {
         return FenError.NotOneKingPerColor;
     }
 
