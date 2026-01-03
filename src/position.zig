@@ -158,6 +158,10 @@ pub const Position = struct {
         }
     }
 
+    fn hasMoves(_: *const Position) bool {
+        return true;
+    }
+
     fn kingsideCastlingOccupied(self: *const Position) bool {
         return self.board.occupiedMask() & kingsideCastlingGapMask(self.sideToMove) != 0;
     }
