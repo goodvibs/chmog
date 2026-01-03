@@ -38,9 +38,10 @@ pub const FenError = error{
     CastlingRightsMoreThan4Chars,
     InvalidEnPassantSquare,
     EnPassantSquareMoreThan2Chars,
-    EnPassantNotPossible,
+    EnPassantWithoutDoublePawnPush,
     InvalidHalfmoveClock,
     HalfmoveClockMoreThan3Chars,
+    HalfmoveClockMoreThanHalfmovesPlayed,
     InvalidFullmove,
     FullmoveMoreThan3Chars,
     InvalidFieldCount,
@@ -236,17 +237,15 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     const fullmove = try parseFenFullmove(fenParts[5]);
     const halfmove = fullmoveToHalfmove(fullmove, turn);
 
-    const pinned = undefined;
-    const checkers = undefined;
     const doublePawnPushFile = if (enPassantSquare) |square| {
         if (halfmove < 1 or square.rank().mask() & board.colorMask(turn.other()) & board.pieceMask(Piece.Pawn) == 0) {
-            return FenError.EnPassantNotPossible;
+            return FenError.EnPassantWithoutDoublePawnPush;
         } else square.file();
     } else null;
 
     const positionContext = PositionContext{
-        .pinned = pinned,
-        .checkers = checkers,
+        .pinned = ~0,
+        .checkers = ~0,
         .castlingRights = castling,
         .doublePawnPushFile = doublePawnPushFile,
         .halfmoveClock = halfmoveClock,
@@ -263,6 +262,10 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     };
 
     assert!(pos.board.doMasksNotConflict());
+
+    if (!pos.doHalfmoveAndSideToMoveAgree()) {
+        return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
+    }
 
     if (pos.board.hasNoPawnsInFirstNorLastRank()) {
         return FenError.PawnsInFirstOrLastRank;

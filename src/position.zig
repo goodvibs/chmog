@@ -159,54 +159,46 @@ pub const Position = struct {
     }
 
     fn kingsideCastlingOccupied(self: *const Position) bool {
-        return self.board.occupiedMask() & KINGSIDE_CASTLING_GAP_MASK_BY_COLOR[@as(usize, self.sideToMove.int())] != 0;
+        return self.board.occupiedMask() & kingsideCastlingGapMask(self.sideToMove) != 0;
     }
 
     fn queensideCastlingOccupied(self: *const Position) bool {
-        return self.board.occupiedMask() & QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR[@as(usize, self.sideToMove.int())] != 0;
+        return self.board.occupiedMask() & queensideCastlingGapMask(self.sideToMove) != 0;
     }
 
     fn kingsideCastlingInCheck(self: *const Position) bool {
-        return self.board.isMaskAttacked(KINGSIDE_CASTLING_CHECK_MASK_BY_COLOR[@as(usize, self.sideToMove.int())], self.sideToMove.other());
+        return self.board.isMaskAttacked(kingsideCastlingCheckMask(self.sideToMove), self.sideToMove.other());
     }
 
     fn queensideCastlingInCheck(self: *const Position) bool {
-        return self.board.isMaskAttacked(QUEENSIDE_CASTLING_CHECK_MASK_BY_COLOR[@as(usize, self.sideToMove.int())], self.sideToMove.other());
+        return self.board.isMaskAttacked(queensideCastlingCheckMask(self.sideToMove), self.sideToMove.other());
     }
 };
 
-fn pawnsStartRankByColor(color: Color) {
-    return PAWNS_START_RANK_BY_COLOR[@as(usize, color.int())];
+fn kingsideCastlingGapMask(forColor: Color) Bitboard {
+    return switch (forColor) {
+        .White => Square.F1.mask() | Square.G1.mask(),
+        .Black => Square.F8.mask() | Square.G8.mask(),
+    };
 }
 
-fn pawnsDoubleMoveRankByColor(color: Color) {
-    return PAWNS_DOUBLE_MOVE_RANK_BY_COLOR[@as(usize, color.int())];
+fn queensideCastlingGapMask(forColor: Color) Bitboard {
+    return switch (forColor) {
+        .White => Square.D1.mask() | Square.C1.mask() | Square.B1.mask(),
+        .Black => Square.D8.mask() | Square.C8.mask() | Square.B8.mask(),
+    };
 }
 
-const PAWNS_START_RANK_BY_COLOR = [2]Rank{
-    Rank.Two, Rank.Seven
-};
+fn kingsideCastlingCheckMask(forColor: Color) Bitboard {
+    return switch (forColor) {
+        .White => Square.E1.mask() | Square.F1.mask() | Square.G1.mask(),
+        .Black => Square.E8.mask() | Square.F8.mask() | Square.G8.mask(),
+    };
+}
 
-const PAWNS_DOUBLE_MOVE_RANK_BY_COLOR = [2]Rank{
-    Rank.Four, Rank.Five
-};
-
-const KINGSIDE_CASTLING_GAP_MASK_BY_COLOR = [2]Bitboard{
-    Square.F1.mask() | Square.G1.mask(),
-    Square.F8.mask() | Square.G8.mask(),
-};
-
-const QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR = [2]Bitboard{
-    Square.D1.mask() | Square.C1.mask() | Square.B1.mask(),
-    Square.D8.mask() | Square.C8.mask() | Square.B8.mask(),
-};
-
-const KINGSIDE_CASTLING_CHECK_MASK_BY_COLOR = [2]Bitboard{
-    Square.E1.mask() | KINGSIDE_CASTLING_GAP_MASK_BY_COLOR[0],
-    Square.E8.mask() | KINGSIDE_CASTLING_GAP_MASK_BY_COLOR[1],
-};
-
-const QUEENSIDE_CASTLING_CHECK_MASK_BY_COLOR = [2]Bitboard{
-    Square.E1.mask() | QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR[0] ^ Square.B1.mask(),
-    Square.E8.mask() | QUEENSIDE_CASTLING_GAP_MASK_BY_COLOR[1] ^ Square.B8.mask(),
-};
+fn queensideCastlingCheckMask(forColor: Color) Bitboard {
+    return switch (forColor) {
+        .White => Square.E1.mask() | Square.D1.mask() | Square.C1.mask(),
+        .Black => Square.E8.mask() | Square.D8.mask() | Square.C8.mask(),
+    };
+}
