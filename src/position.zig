@@ -49,7 +49,7 @@ pub const Position = struct {
     }
 
     pub fn isInCheckmate(self: *const Position) bool {
-        return self.hasMoves();
+        return !self.hasMoves();
     }
 
     pub fn isNotInIllegalCheck(self: *const Position) bool {
@@ -57,7 +57,7 @@ pub const Position = struct {
     }
 
     fn addLegalKnightMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
-        const movableKnights = self.board.mask(Piece.Knight, self.sideToMove) & ~self.currentContext().pinned;
+        const movableKnights = self.board.mask(Piece.Knight, self.sideToMove) & ~self.currentContext.pinned;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
 
         var sourceMasksIter = iterSetBits(movableKnights);
@@ -92,7 +92,7 @@ pub const Position = struct {
             };
 
             var filteredAttacks = attacks & ~currentSidePieces;
-            if (sourceMask & self.currentContext().pinned != 0) {
+            if (sourceMask & self.currentContext.pinned != 0) {
                 const attacksFilter = edgeToEdge(source, currentSideKingSquare);
                 filteredAttacks &= attacksFilter;
             }
@@ -118,11 +118,11 @@ pub const Position = struct {
     }
 
     fn isKingMoveSafe(self: *const Position, source: Square, dest: Square) bool {
-        const attackers = self.colorMask(self.sideToMove.other()) & !dest.mask();
+        const attackers = self.board.colorMask(self.sideToMove.other()) & ~dest.mask();
 
-        if (multiPawnAttacks(dest, self.sideToMove) & self.board.pieceMask(Piece.Pawn) & attackers != 0 or
+        if (multiPawnAttacks(dest.mask(), self.sideToMove) & self.board.pieceMask(Piece.Pawn) & attackers != 0 or
             singleKnightAttacks(dest) & self.board.pieceMask(Piece.Knight) & attackers != 0 or
-            singleKingAttacks(dest) & self.pieceMask(Piece.King) & attackers != 0)
+            singleKingAttacks(dest) & self.board.pieceMask(Piece.King) & attackers != 0)
         {
             return false;
         } else {
@@ -147,7 +147,7 @@ pub const Position = struct {
     }
 
     fn addLegalCastlingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
-        const castlingRights = self.currentContext().castlingRights;
+        const castlingRights = self.currentContext.castlingRights;
 
         if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingOccupied() and !self.kingsideCastlingInCheck()) {
             try moves.append(allocator, Move.kingsideCastling(self.sideToMove));
