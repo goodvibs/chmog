@@ -1,4 +1,5 @@
-const std = @import("std");
+const mem = @import("std").mem;
+const assert = @import("std").debug.assert;
 const Bitboard = @import("./mod.zig").Bitboard;
 const masks = @import("./mod.zig").masks;
 const Piece = @import("./mod.zig").Piece;
@@ -20,8 +21,8 @@ pub const Board = struct {
 
     pub fn blank() Board {
         return Board{
-            .pieceMasks = std.mem.zeroes([7]Bitboard),
-            .colorMasks = std.mem.zeroes([2]Bitboard),
+            .pieceMasks = mem.zeroes([7]Bitboard),
+            .colorMasks = mem.zeroes([2]Bitboard),
         };
     }
 
@@ -53,31 +54,22 @@ pub const Board = struct {
     }
 
     pub fn doPieceMasksUnionToOccupiedMask(self: *const Board) bool {
-        var pieceMasksUnion = 0;
-        inline for (self.pieceMasks[@as(Piece.Pawn.int(), usize)..]) |pieceMask_| {
+        var pieceMasksUnion: Bitboard = 0;
+        for (self.pieceMasks[@as(usize, Piece.Pawn.int())..]) |pieceMask_| {
             pieceMasksUnion |= pieceMask_;
         }
-        return pieceMasksUnion;
-    }
-
-    pub fn doPieceMasksNumSetBitsEqualOccupiedMaskNumSetBits(self: *const Board) bool {
-        var numSetBits = 0;
-        inline for (self.pieceMasks[@as(Piece.Pawn.int(), usize)..]) |pieceMask_| {
-            numSetBits += @popCount(pieceMask_);
-        }
-        return numSetBits == @popCount(self.pieceMask(Piece.Null));
+        return pieceMasksUnion == self.occupiedMask();
     }
 
     pub fn doMasksNotConflict(self: *const Board) bool {
         return self.doColorMasksUnionToOccupiedMask() and
             self.doColorMasksNotConflict() and
-            self.doPieceMasksUnionToOccupiedMask() and
-            self.doPieceMasksNumSetBitsEqualOccupiedMaskNumSetBits();
+            self.doPieceMasksUnionToOccupiedMask();
     }
 
     pub fn hasOneKingPerColor(self: *const Board) bool {
         const kingsMask = self.pieceMask(Piece.King);
-        return @popCount(kingsMask == 2) and
+        return @popCount(kingsMask) == 2 and
             @popCount(kingsMask & self.colorMask(Color.White)) == 1 and
             @popCount(kingsMask & self.colorMask(Color.Black)) == 1;
     }
@@ -86,8 +78,9 @@ pub const Board = struct {
     }
 
     pub fn isColorInCheck(self: *const Board, color: Color) bool {
-        const kingSquare = self.colorMask(color) & self.pieceMask(Piece.King);
-        return self.isSquareAttacked(kingSquare, color.other());
+        const kingMask = self.mask(Piece.King, color);
+        assert(@popCount(kingMask) == 1);
+        return self.isSquareAttacked(Square.fromMask(kingMask) catch unreachable, color.other());
     }
 
     pub fn isValid(self: *const Board, checks: anytype) bool {
@@ -134,7 +127,7 @@ pub const Board = struct {
 
         const relevantPawnsMask = multiPawnAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn);
         const relevantKnightsMask = singleKnightAttacks(square) & self.pieceMask(Piece.Knight);
-        const relevantKingsMask = singleKingAttacks(mask_) & self.pieceMask(Piece.King);
+        const relevantKingsMask = singleKingAttacks(square) & self.pieceMask(Piece.King);
 
         if ((relevantPawnsMask | relevantKnightsMask | relevantKingsMask) & attackers != 0) {
             return true;

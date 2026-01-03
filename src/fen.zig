@@ -261,7 +261,7 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         .sideToMove = turn,
     };
 
-    assert!(pos.board.doMasksNotConflict());
+    assert(pos.board.doMasksNotConflict());
 
     if (!pos.doHalfmoveAndSideToMoveAgree()) {
         return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
