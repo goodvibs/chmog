@@ -101,3 +101,141 @@ pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
     }
     return attacks;
 }
+
+const testing = @import("std").testing;
+
+test "multiPawnPushes" {
+    const whitePawns = Square.E2.mask();
+    const whitePushes = multiPawnPushes(whitePawns, Color.White);
+    try testing.expectEqual(Square.E3.mask(), whitePushes);
+
+    const blackPawns = Square.E7.mask();
+    const blackPushes = multiPawnPushes(blackPawns, Color.Black);
+    try testing.expectEqual(Square.E6.mask(), blackPushes);
+
+    const multipleWhite = Square.E2.mask() | Square.D2.mask();
+    const multiplePushes = multiPawnPushes(multipleWhite, Color.White);
+    try testing.expectEqual(Square.E3.mask() | Square.D3.mask(), multiplePushes);
+}
+
+test "multiPawnAttacks" {
+    const whitePawn = Square.E2.mask();
+    const whiteAttacks = multiPawnAttacks(whitePawn, Color.White);
+    try testing.expect(whiteAttacks & Square.D3.mask() != 0);
+    try testing.expect(whiteAttacks & Square.F3.mask() != 0);
+    try testing.expect(whiteAttacks & Square.E3.mask() == 0);
+
+    const blackPawn = Square.E7.mask();
+    const blackAttacks = multiPawnAttacks(blackPawn, Color.Black);
+    try testing.expect(blackAttacks & Square.D6.mask() != 0);
+    try testing.expect(blackAttacks & Square.F6.mask() != 0);
+    try testing.expect(blackAttacks & Square.E6.mask() == 0);
+
+    const whitePawnA = Square.A2.mask();
+    const whiteAttacksA = multiPawnAttacks(whitePawnA, Color.White);
+    try testing.expect(whiteAttacksA & Square.B3.mask() != 0);
+    try testing.expect(whiteAttacksA & Square.A3.mask() == 0);
+
+    const whitePawnH = Square.H2.mask();
+    const whiteAttacksH = multiPawnAttacks(whitePawnH, Color.White);
+    try testing.expect(whiteAttacksH & Square.G3.mask() != 0);
+    try testing.expect(whiteAttacksH & Square.H3.mask() == 0);
+}
+
+test "multiKnightAttacks" {
+    const knight = Square.E4.mask();
+    const attacks = multiKnightAttacks(knight);
+
+    // E4 knight should attack 8 squares
+    try testing.expectEqual(@as(u32, 8), @popCount(attacks));
+
+    // Check specific squares
+    try testing.expect(attacks & Square.D6.mask() != 0);
+    try testing.expect(attacks & Square.F6.mask() != 0);
+    try testing.expect(attacks & Square.C5.mask() != 0);
+    try testing.expect(attacks & Square.G5.mask() != 0);
+    try testing.expect(attacks & Square.C3.mask() != 0);
+    try testing.expect(attacks & Square.G3.mask() != 0);
+    try testing.expect(attacks & Square.D2.mask() != 0);
+    try testing.expect(attacks & Square.F2.mask() != 0);
+
+    // Should not attack itself
+    try testing.expect(attacks & Square.E4.mask() == 0);
+}
+
+test "multiKingAttacks" {
+    const king = Square.E4.mask();
+    const attacks = multiKingAttacks(king);
+
+    // E4 king should attack 8 squares
+    try testing.expectEqual(@as(u32, 8), @popCount(attacks));
+
+    // Check all 8 directions
+    try testing.expect(attacks & Square.D5.mask() != 0);
+    try testing.expect(attacks & Square.E5.mask() != 0);
+    try testing.expect(attacks & Square.F5.mask() != 0);
+    try testing.expect(attacks & Square.D4.mask() != 0);
+    try testing.expect(attacks & Square.F4.mask() != 0);
+    try testing.expect(attacks & Square.D3.mask() != 0);
+    try testing.expect(attacks & Square.E3.mask() != 0);
+    try testing.expect(attacks & Square.F3.mask() != 0);
+
+    // Edge case - king on corner
+    const cornerKing = Square.A1.mask();
+    const cornerAttacks = multiKingAttacks(cornerKing);
+    try testing.expectEqual(@as(u32, 3), @popCount(cornerAttacks));
+    try testing.expect(cornerAttacks & Square.B1.mask() != 0);
+    try testing.expect(cornerAttacks & Square.A2.mask() != 0);
+    try testing.expect(cornerAttacks & Square.B2.mask() != 0);
+}
+
+test "singleBishopAttacks" {
+    const bishop = Square.E4;
+    const empty = @as(Bitboard, 0);
+    const attacks = singleBishopAttacks(bishop, empty);
+
+    // Should attack diagonally in 4 directions
+    try testing.expect(attacks & Square.D5.mask() != 0);
+    try testing.expect(attacks & Square.F5.mask() != 0);
+    try testing.expect(attacks & Square.D3.mask() != 0);
+    try testing.expect(attacks & Square.F3.mask() != 0);
+    try testing.expect(attacks & Square.B1.mask() != 0);
+    try testing.expect(attacks & Square.H1.mask() != 0);
+    try testing.expect(attacks & Square.A8.mask() != 0);
+
+    // Should not attack orthogonally
+    try testing.expect(attacks & Square.E5.mask() == 0);
+    try testing.expect(attacks & Square.D4.mask() == 0);
+
+    // With blocker
+    const blocker = Square.D5.mask();
+    const attacksWithBlocker = singleBishopAttacks(bishop, blocker);
+    try testing.expect(attacksWithBlocker & Square.D5.mask() != 0); // Includes blocker
+    try testing.expect(attacksWithBlocker & Square.C6.mask() == 0); // Blocked beyond
+    try testing.expect(attacksWithBlocker & Square.F5.mask() != 0); // Other direction still works
+}
+
+test "singleRookAttacks" {
+    const rook = Square.E4;
+    const empty = @as(Bitboard, 0);
+    const attacks = singleRookAttacks(rook, empty);
+
+    // Should attack orthogonally in 4 directions
+    try testing.expect(attacks & Square.E5.mask() != 0);
+    try testing.expect(attacks & Square.E3.mask() != 0);
+    try testing.expect(attacks & Square.D4.mask() != 0);
+    try testing.expect(attacks & Square.F4.mask() != 0);
+    try testing.expect(attacks & Square.E8.mask() != 0);
+    try testing.expect(attacks & Square.A4.mask() != 0);
+
+    // Should not attack diagonally
+    try testing.expect(attacks & Square.D5.mask() == 0);
+    try testing.expect(attacks & Square.F5.mask() == 0);
+
+    // With blocker
+    const blocker = Square.E5.mask();
+    const attacksWithBlocker = singleRookAttacks(rook, blocker);
+    try testing.expect(attacksWithBlocker & Square.E5.mask() != 0); // Includes blocker
+    try testing.expect(attacksWithBlocker & Square.E6.mask() == 0); // Blocked beyond
+    try testing.expect(attacksWithBlocker & Square.E3.mask() != 0); // Other direction still works
+}

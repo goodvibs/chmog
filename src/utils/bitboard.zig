@@ -205,3 +205,90 @@ test "iterBitCombinations" {
         try testing.expectEqualSlices(Bitboard, &expected, result.items);
     }
 }
+
+test "iterSetBits" {
+    {
+        const mask = 0;
+        var iter = iterSetBits(mask);
+        try testing.expectEqual(null, iter.next());
+    }
+
+    {
+        const mask = Square.A1.mask();
+        var iter = iterSetBits(mask);
+        const first = iter.next();
+        try testing.expect(first != null);
+        try testing.expectEqual(Square.A1.mask(), first.?);
+        try testing.expectEqual(null, iter.next());
+    }
+
+    {
+        const mask = Square.A1.mask() | Square.E4.mask() | Square.H8.mask();
+        var iter = iterSetBits(mask);
+        var count: u32 = 0;
+        var total: Bitboard = 0;
+        while (iter.next()) |bit| {
+            count += 1;
+            total |= bit;
+        }
+        try testing.expectEqual(@as(u32, 3), count);
+        try testing.expectEqual(mask, total);
+    }
+}
+
+test "between" {
+    // Same square
+    try testing.expectEqual(@as(Bitboard, 0), between(Square.E4, Square.E4));
+
+    // Adjacent squares
+    try testing.expectEqual(@as(Bitboard, 0), between(Square.E4, Square.E5));
+
+    // On same rank
+    const betweenRank = between(Square.E4, Square.H4);
+    try testing.expect(betweenRank & Square.F4.mask() != 0);
+    try testing.expect(betweenRank & Square.G4.mask() != 0);
+    try testing.expect(betweenRank & Square.E4.mask() == 0);
+    try testing.expect(betweenRank & Square.H4.mask() == 0);
+
+    // On same file
+    const betweenFile = between(Square.E4, Square.E1);
+    try testing.expect(betweenFile & Square.E2.mask() != 0);
+    try testing.expect(betweenFile & Square.E3.mask() != 0);
+    try testing.expect(betweenFile & Square.E4.mask() == 0);
+    try testing.expect(betweenFile & Square.E1.mask() == 0);
+
+    // On same diagonal
+    const betweenDiag = between(Square.E4, Square.B1);
+    try testing.expect(betweenDiag & Square.D3.mask() != 0);
+    try testing.expect(betweenDiag & Square.C2.mask() != 0);
+    try testing.expect(betweenDiag & Square.E4.mask() == 0);
+    try testing.expect(betweenDiag & Square.B1.mask() == 0);
+
+    // Not on same line
+    try testing.expectEqual(@as(Bitboard, 0), between(Square.E4, Square.A1));
+}
+
+test "edgeToEdge" {
+    // Same square
+    try testing.expectEqual(@as(Bitboard, 0), edgeToEdge(Square.E4, Square.E4));
+
+    // On same rank
+    const edgeRank = edgeToEdge(Square.E4, Square.H4);
+    try testing.expect(edgeRank & Square.E4.mask() != 0);
+    try testing.expect(edgeRank & Square.H4.mask() != 0);
+    try testing.expect(edgeRank & Square.F4.mask() != 0);
+    try testing.expect(edgeRank & Square.G4.mask() != 0);
+    try testing.expect(edgeRank & Square.A4.mask() != 0);
+    try testing.expect(edgeRank & Square.B4.mask() != 0);
+
+    // On same file
+    const edgeFile = edgeToEdge(Square.E4, Square.E1);
+    try testing.expect(edgeFile & Square.E4.mask() != 0);
+    try testing.expect(edgeFile & Square.E1.mask() != 0);
+    try testing.expect(edgeFile & Square.E2.mask() != 0);
+    try testing.expect(edgeFile & Square.E3.mask() != 0);
+    try testing.expect(edgeFile & Square.E8.mask() != 0);
+
+    // Not on same line
+    try testing.expectEqual(@as(Bitboard, 0), edgeToEdge(Square.E4, Square.A1));
+}

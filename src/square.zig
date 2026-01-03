@@ -236,3 +236,127 @@ fn computeOrthogonalsMask(from_: [1]Square) Bitboard {
 
 const DIAGONALS_MASK_LOOKUP = SquareToBitboard.init(computeDiagonalsMask);
 const ORTHOGONALS_MASK_LOOKUP = SquareToBitboard.init(computeOrthogonalsMask);
+
+const testing = @import("std").testing;
+
+test "square fromInt and int" {
+    for (0..64) |i| {
+        const square = Square.fromInt(@as(u6, @intCast(i)));
+        try testing.expectEqual(@as(u6, @intCast(i)), square.int());
+    }
+}
+
+test "square fromRankAndFile" {
+    try testing.expectEqual(Square.A8, Square.fromRankAndFile(Rank.Eight, File.A));
+    try testing.expectEqual(Square.E1, Square.fromRankAndFile(Rank.One, File.E));
+    try testing.expectEqual(Square.H1, Square.fromRankAndFile(Rank.One, File.H));
+    try testing.expectEqual(Square.D4, Square.fromRankAndFile(Rank.Four, File.D));
+}
+
+test "square rank and file" {
+    try testing.expectEqual(Rank.Eight, Square.A8.rank());
+    try testing.expectEqual(File.A, Square.A8.file());
+    try testing.expectEqual(Rank.One, Square.E1.rank());
+    try testing.expectEqual(File.E, Square.E1.file());
+    try testing.expectEqual(Rank.Four, Square.D4.rank());
+    try testing.expectEqual(File.D, Square.D4.file());
+}
+
+test "square mask and fromMask" {
+    for (0..64) |i| {
+        const square = Square.fromInt(@as(u6, @intCast(i)));
+        const mask = square.mask();
+        try testing.expectEqual(@as(u32, 1), @popCount(mask));
+        const reconstructed = try Square.fromMask(mask);
+        try testing.expectEqual(square, reconstructed);
+    }
+}
+
+test "square fromMask errors" {
+    try testing.expectError(error.InvalidBitboard, Square.fromMask(0));
+    try testing.expectError(error.MultipleBitsSet, Square.fromMask(3));
+    try testing.expectError(error.MultipleBitsSet, Square.fromMask(0xFFFFFFFFFFFFFFFF));
+}
+
+test "square distance functions" {
+    try testing.expectEqual(@as(u3, 0), Square.A8.distanceFromTop());
+    try testing.expectEqual(@as(u3, 7), Square.A8.distanceFromBottom());
+    try testing.expectEqual(@as(u3, 0), Square.A8.distanceFromLeft());
+    try testing.expectEqual(@as(u3, 7), Square.A8.distanceFromRight());
+
+    try testing.expectEqual(@as(u3, 7), Square.A1.distanceFromTop());
+    try testing.expectEqual(@as(u3, 0), Square.A1.distanceFromBottom());
+    try testing.expectEqual(@as(u3, 0), Square.A1.distanceFromLeft());
+    try testing.expectEqual(@as(u3, 7), Square.A1.distanceFromRight());
+
+    try testing.expectEqual(@as(u3, 4), Square.E4.distanceFromTop());
+    try testing.expectEqual(@as(u3, 3), Square.E4.distanceFromBottom());
+    try testing.expectEqual(@as(u3, 4), Square.E4.distanceFromLeft());
+    try testing.expectEqual(@as(u3, 3), Square.E4.distanceFromRight());
+}
+
+test "square movement" {
+    try testing.expectEqual(Square.A7, Square.A8.down().?);
+    try testing.expectEqual(Square.B8, Square.A8.right().?);
+    try testing.expectEqual(@as(?Square, null), Square.A8.up());
+    try testing.expectEqual(@as(?Square, null), Square.A8.left());
+
+    try testing.expectEqual(Square.A2, Square.A1.up().?);
+    try testing.expectEqual(Square.B1, Square.A1.right().?);
+    try testing.expectEqual(@as(?Square, null), Square.A1.down());
+    try testing.expectEqual(@as(?Square, null), Square.A1.left());
+
+    try testing.expectEqual(Square.B7, Square.A8.downRight().?);
+    try testing.expectEqual(Square.B7, Square.A8.down().?.right().?);
+    try testing.expectEqual(@as(?Square, null), Square.A8.upRight());
+    try testing.expectEqual(@as(?Square, null), Square.A8.downLeft());
+}
+
+test "square name and fromName" {
+    try testing.expectEqualSlices(u8, "a8", &Square.A8.name());
+    try testing.expectEqualSlices(u8, "e1", &Square.E1.name());
+    try testing.expectEqualSlices(u8, "h1", &Square.H1.name());
+    try testing.expectEqualSlices(u8, "d4", &Square.D4.name());
+
+    try testing.expectEqual(Square.A8, try Square.fromName([2]u8{ 'a', '8' }));
+    try testing.expectEqual(Square.E1, try Square.fromName([2]u8{ 'e', '1' }));
+    try testing.expectEqual(Square.H1, try Square.fromName([2]u8{ 'h', '1' }));
+    try testing.expectEqual(Square.D4, try Square.fromName([2]u8{ 'd', '4' }));
+}
+
+test "square diagonals and orthogonals" {
+    const e4 = Square.E4;
+    const e4Diagonals = e4.diagonalsMask();
+    const e4Orthogonals = e4.orthogonalsMask();
+
+    try testing.expect(e4Diagonals & e4.mask() != 0);
+    try testing.expect(e4Orthogonals & e4.mask() != 0);
+
+    try testing.expect(e4.isOnSameDiagonalAs(Square.B1)); // a8-e4-h1 diagonal
+    try testing.expect(e4.isOnSameDiagonalAs(Square.G2)); // a8-e4-h1 diagonal
+    try testing.expect(e4.isOnSameDiagonalAs(Square.H1)); // a8-e4-h1 diagonal
+    try testing.expect(e4.isOnSameDiagonalAs(Square.A8)); // a8-e4-h1 diagonal
+
+    try testing.expect(e4.isOnSameOrthogonalAs(Square.E1));
+    try testing.expect(e4.isOnSameOrthogonalAs(Square.E8));
+    try testing.expect(e4.isOnSameOrthogonalAs(Square.A4));
+    try testing.expect(e4.isOnSameOrthogonalAs(Square.H4));
+
+    try testing.expect(!e4.isOnSameDiagonalAs(Square.E1));
+    try testing.expect(!e4.isOnSameOrthogonalAs(Square.D5));
+}
+
+test "square neighborInDirection" {
+    try testing.expectEqual(Square.E5, Square.E4.neighborInDirection(QueenlikeMoveDirection.Up).?);
+    try testing.expectEqual(Square.E3, Square.E4.neighborInDirection(QueenlikeMoveDirection.Down).?);
+    try testing.expectEqual(Square.D4, Square.E4.neighborInDirection(QueenlikeMoveDirection.Left).?);
+    try testing.expectEqual(Square.F4, Square.E4.neighborInDirection(QueenlikeMoveDirection.Right).?);
+    try testing.expectEqual(Square.D5, Square.E4.neighborInDirection(QueenlikeMoveDirection.UpLeft).?);
+    try testing.expectEqual(Square.F5, Square.E4.neighborInDirection(QueenlikeMoveDirection.UpRight).?);
+    try testing.expectEqual(Square.D3, Square.E4.neighborInDirection(QueenlikeMoveDirection.DownLeft).?);
+    try testing.expectEqual(Square.F3, Square.E4.neighborInDirection(QueenlikeMoveDirection.DownRight).?);
+
+    try testing.expectEqual(@as(?Square, null), Square.A8.neighborInDirection(QueenlikeMoveDirection.Up));
+    try testing.expectEqual(@as(?Square, null), Square.A8.neighborInDirection(QueenlikeMoveDirection.Left));
+    try testing.expectEqual(@as(?Square, null), Square.A8.neighborInDirection(QueenlikeMoveDirection.UpLeft));
+}
