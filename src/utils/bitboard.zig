@@ -86,11 +86,11 @@ fn computeBetween(squares: [2]Square) Bitboard {
     if (square1 == square2 or !square1.isOnSameLineAs(square2)) return 0 else {
         const direction = (PieceMoveDirection.lookup(square1, square2) orelse unreachable).queenlike;
         var current = square1;
-        var res = current.mask();
+        var res: Bitboard = 0;
         while (true) {
             current = current.neighborInDirection(direction) orelse unreachable;
-            res |= current.mask();
             if (current == square2) break;
+            res |= current.mask();
         }
         return res;
     }
