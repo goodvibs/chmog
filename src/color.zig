@@ -1,3 +1,7 @@
+const Bitboard = @import("./mod.zig").Bitboard;
+const Rank = @import("./mod.zig").Rank;
+const masks = @import("./mod.zig").masks;
+
 pub const Color = enum(u1) {
     White = 0,
     Black = 1,
@@ -28,6 +32,6 @@ const testing = @import("std").testing;
 test "color" {
     try testing.expectEqual(@as(u1, 0), Color.White.int());
     try testing.expectEqual(@as(u1, 1), Color.Black.int());
-    try testing.expectEqual(@as(u1, 1), Color.White.other().int());
-    try testing.expectEqual(@as(u1, 0), Color.Black.other().int());
+    try testing.expectEqual(Color.White.other(), Color.Black);
+    try testing.expectEqual(Color.Black.other(), Color.White);
 }
