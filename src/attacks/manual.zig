@@ -10,20 +10,18 @@ const Bitboard = @import("../mod.zig").Bitboard;
 const Color = @import("../mod.zig").Color;
 const Square = @import("../mod.zig").Square;
 
-pub fn multiPawnPushes(pawns: Bitboard, comptime color: Color) Bitboard {
-    if (color == Color.White) {
-        return pawns << 8;
-    } else {
-        return pawns >> 8;
-    }
+pub fn multiPawnPushes(pawns: Bitboard, color: Color) Bitboard {
+    return switch (color) {
+        .White => pawns << 8,
+        .Black => pawns >> 8,
+    };
 }
 
 pub fn multiPawnAttacks(pawns: Bitboard, color: Color) Bitboard {
-    if (color == Color.White) {
-        return ((pawns << 7) & ~FILE_A) | ((pawns << 9) & ~FILE_H);
-    } else {
-        return ((pawns >> 7) & ~FILE_A) | ((pawns >> 9) & ~FILE_H);
-    }
+    return switch (color) {
+        .White => ((pawns << 7) & ~FILE_A) | ((pawns << 9) & ~FILE_H),
+        .Black => ((pawns >> 7) & ~FILE_H) | ((pawns >> 9) & ~FILE_A),
+    };
 }
 
 pub fn multiKnightAttacks(knights: Bitboard) Bitboard {
