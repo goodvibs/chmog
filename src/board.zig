@@ -83,15 +83,6 @@ pub const Board = struct {
         return self.isSquareAttacked(Square.fromMask(kingMask) catch unreachable, color.other());
     }
 
-    pub fn isValid(self: *const Board, checks: anytype) bool {
-        inline for (checks) |check| {
-            if (!check(self)) {
-                return false;
-            }
-            return true;
-        }
-    }
-
     pub fn occupiedMask(self: *const Board) Bitboard {
         return self.pieceMasks[0];
     }
