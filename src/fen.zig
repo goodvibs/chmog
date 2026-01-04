@@ -1,3 +1,4 @@
+const Bitboard = @import("./mod.zig").Bitboard;
 const Piece = @import("./mod.zig").Piece;
 const Color = @import("./mod.zig").Color;
 const CastlingRights = @import("./mod.zig").CastlingRights;
@@ -31,7 +32,7 @@ pub const FenError = error{
     ZeroNotAllowedInBoardRow,
     NineNotAllowedInBoardRow,
     BoardRowLengthExceeded,
-    InvalidPieceInBoardRow,
+    InvalidCharInBoardRow,
     InvalidSideToMove,
     InvalidCastlingRightsChar,
     RepeatedCastlingRightsChar,
@@ -54,8 +55,7 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
     if (fenBoardRow.len > 8) {
         return FenError.BoardRowLengthExceeded;
     }
-    const file = File.A;
-    var wasNumberLast = false;
+    var file = File.A;
     for (fenBoardRow) |char| {
         switch (char) {
             '0' => {
@@ -65,24 +65,19 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 return FenError.NineNotAllowedInBoardRow;
             },
             '1'...'8' => {
-                const gapValue = char - '0';
-                if (gapValue > File.H.int() - file.int()) {
+                const emptySquares: u3 = @truncate(char - '0');
+                const squaresLeftInRow = File.H.int() - file.int();
+                if (emptySquares == squaresLeftInRow) {
+                    break;
+                } else if (emptySquares < squaresLeftInRow) {
+                    file = file.rightN(emptySquares) catch unreachable;
+                } else {
                     return FenError.BoardRowLengthExceeded;
                 }
-                file = File.fromInt(file.int() + gapValue);
-                wasNumberLast = true;
             },
-            else => {
-                if (file == File.H) {
-                    return FenError.BoardRowLengthExceeded;
-                }
+            'p', 'n', 'b', 'r', 'q', 'k', 'P', 'N', 'B', 'R', 'Q', 'K' => {
                 const isUpper = char >= 'A';
-
-                const piece = if (isUpper) Piece.fromUppercaseAscii(char) else Piece.fromLowercaseAscii(char);
-                if (piece == Piece.Null) {
-                    return FenError.InvalidPieceInBoardRow;
-                }
-
+                const piece = (if (isUpper) Piece.fromUppercaseAscii(char) else Piece.fromLowercaseAscii(char));
                 const color = Color.fromIsWhite(isUpper);
                 const square = Square.fromRankAndFile(rank, file);
 
@@ -90,8 +85,9 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 board.xorColorMask(color, square.mask());
                 board.xorOccupiedMask(square.mask());
 
-                file = file.right() catch File.A;
+                file = file.right() catch break;
             },
+            else => return FenError.InvalidCharInBoardRow,
         }
     }
 }
@@ -99,8 +95,8 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
 fn parseFenBoard(fenBoard: []const u8) !Board {
     if (fenBoard.len <= MAX_CHARS_IN_BOARD) {
         var board: Board = Board.blank();
-        const rank = Rank.Eight;
-        var rowStartCharIndex = 0;
+        var rank = Rank.Eight;
+        var rowStartCharIndex: usize = 0;
         for (0..fenBoard.len) |charIndex| {
             const char = fenBoard[charIndex];
             if (char == '/') {
@@ -202,7 +198,7 @@ fn parseFenFullmove(fenFullmove: []const u8) !u9 {
 }
 
 pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Position {
-    const trimmedFen = trim(u8, fen, [_]u8{ " ", "\n", "\r", "\t" });
+    const trimmedFen = trim(u8, fen, &[_]u8{ ' ', '\n', '\r', '\t' });
 
     if (trimmedFen.len > MAX_CHARS) {
         return FenError.TooManyChars;
@@ -237,15 +233,16 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     const fullmove = try parseFenFullmove(fenParts[5]);
     const halfmove = fullmoveToHalfmove(fullmove, turn);
 
-    const doublePawnPushFile = if (enPassantSquare) |square| {
+    const doublePawnPushFile: ?File = if (enPassantSquare) |square| blk: {
         if (halfmove < 1 or square.rank().mask() & board.colorMask(turn.other()) & board.pieceMask(Piece.Pawn) == 0) {
             return FenError.EnPassantWithoutDoublePawnPush;
-        } else square.file();
+        }
+        break :blk square.file();
     } else null;
 
     const positionContext = PositionContext{
-        .pinned = ~0,
-        .checkers = ~0,
+        .pinned = ~@as(Bitboard, 0),
+        .checkers = ~@as(Bitboard, 0),
         .castlingRights = castling,
         .doublePawnPushFile = doublePawnPushFile,
         .halfmoveClock = halfmoveClock,
@@ -282,10 +279,10 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     return pos;
 }
 
-fn fullmoveToHalfmove(fullmove: u9, turn: Color) u6 {
+fn fullmoveToHalfmove(fullmove: u9, turn: Color) u10 {
     if (turn == Color.White) {
-        return fullmove;
+        return @as(u10, fullmove);
     } else {
-        return fullmove + 1;
+        return @as(u10, fullmove) + 1;
     }
 }
