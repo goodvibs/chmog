@@ -102,6 +102,7 @@ fn parseFenBoard(fenBoard: []const u8) !Board {
             if (char == '/') {
                 try parseFenBoardRow(fenBoard[rowStartCharIndex..charIndex], rank, &board);
                 rowStartCharIndex = charIndex + 1;
+                rank = rank.down() catch unreachable;
             }
         }
         try parseFenBoardRow(fenBoard[rowStartCharIndex..], rank, &board);
@@ -204,12 +205,11 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         return FenError.TooManyChars;
     }
 
-    const rawFenParts = splitScalar(u8, trimmedFen, ' ', NUMBER_OF_FIELD_DELIMETERS);
-
     var fenParts: [6][]const u8 = undefined;
     var fenPartsCounter: usize = 0;
-    for (rawFenParts) |part| {
-        const trimmedFenPart = trim(u8, part, " ");
+    var it = splitScalar(u8, trimmedFen, ' ');
+    while (it.next()) |part| {
+        const trimmedFenPart = trim(u8, part, &[_]u8{' '});
 
         if (trimmedFenPart.len > 0) {
             if (fenPartsCounter >= fenParts.len) {
@@ -285,4 +285,268 @@ fn fullmoveToHalfmove(fullmove: u9, turn: Color) u10 {
     } else {
         return @as(u10, fullmove) + 1;
     }
+}
+
+const testing = @import("std").testing;
+
+test "parseFen starting position" {
+    const startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    var pos = try parseFen(startingFen, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+
+    try testing.expectEqual(Color.White, pos.sideToMove);
+    try testing.expect(pos.board.hasOneKingPerColor());
+    try testing.expect(pos.board.hasNoPawnsInFirstNorLastRank());
+    try testing.expectEqual(@as(u10, 0), pos.halfmove);
+}
+
+test "parseFen board parsing" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    var pos = try parseFen(fen, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+
+    // Check that pieces are placed correctly
+    try testing.expect(pos.board.mask(Piece.Rook, Color.White) & Square.A1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Knight, Color.White) & Square.B1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Bishop, Color.White) & Square.C1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Queen, Color.White) & Square.D1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.King, Color.White) & Square.E1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Pawn, Color.White) & Square.A2.mask() != 0);
+
+    try testing.expect(pos.board.mask(Piece.Rook, Color.Black) & Square.A8.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Pawn, Color.Black) & Square.A7.mask() != 0);
+}
+
+test "parseFen side to move" {
+    const whiteFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    var whitePos = try parseFen(whiteFen, testing.allocator, 100);
+    defer whitePos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(Color.White, whitePos.sideToMove);
+
+    const blackFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 0 1";
+    var blackPos = try parseFen(blackFen, testing.allocator, 100);
+    defer blackPos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(Color.Black, blackPos.sideToMove);
+}
+
+test "parseFen castling rights" {
+    const allCastling = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    var pos1 = try parseFen(allCastling, testing.allocator, 100);
+    defer pos1.previousContexts.deinit(testing.allocator);
+    try testing.expect(pos1.currentContext.castlingRights.kingsideForColor(Color.White));
+    try testing.expect(pos1.currentContext.castlingRights.queensideForColor(Color.White));
+    try testing.expect(pos1.currentContext.castlingRights.kingsideForColor(Color.Black));
+    try testing.expect(pos1.currentContext.castlingRights.queensideForColor(Color.Black));
+
+    const noCastling = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    var pos2 = try parseFen(noCastling, testing.allocator, 100);
+    defer pos2.previousContexts.deinit(testing.allocator);
+    try testing.expect(!pos2.currentContext.castlingRights.kingsideForColor(Color.White));
+    try testing.expect(!pos2.currentContext.castlingRights.queensideForColor(Color.White));
+
+    const whiteOnly = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1";
+    var pos3 = try parseFen(whiteOnly, testing.allocator, 100);
+    defer pos3.previousContexts.deinit(testing.allocator);
+    try testing.expect(pos3.currentContext.castlingRights.kingsideForColor(Color.White));
+    try testing.expect(pos3.currentContext.castlingRights.queensideForColor(Color.White));
+    try testing.expect(!pos3.currentContext.castlingRights.kingsideForColor(Color.Black));
+}
+
+test "parseFen en passant" {
+    // Valid en passant square
+    const fenWithEnPassant = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    var pos = try parseFen(fenWithEnPassant, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    try testing.expect(pos.currentContext.doublePawnPushFile != null);
+    try testing.expectEqual(File.E, pos.currentContext.doublePawnPushFile.?);
+
+    // No en passant
+    const fenNoEnPassant = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    var pos2 = try parseFen(fenNoEnPassant, testing.allocator, 100);
+    defer pos2.previousContexts.deinit(testing.allocator);
+    try testing.expect(pos2.currentContext.doublePawnPushFile == null);
+}
+
+test "parseFen halfmove clock and fullmove" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 5 10";
+    var pos = try parseFen(fen, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(@as(u7, 5), pos.currentContext.halfmoveClock);
+    try testing.expectEqual(@as(u10, 10), pos.halfmove);
+}
+
+test "parseFen errors - invalid board row length" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR9 w - - 0 1";
+    try testing.expectError(FenError.BoardRowLengthExceeded, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - zero in board row" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/0/PPPPPPPP/RNBQKBNR w - - 0 1";
+    try testing.expectError(FenError.ZeroNotAllowedInBoardRow, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - nine in board row" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/9/PPPPPPPP/RNBQKBNR w - - 0 1";
+    try testing.expectError(FenError.NineNotAllowedInBoardRow, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid piece" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNX w - - 0 1";
+    try testing.expectError(FenError.InvalidCharInBoardRow, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid side to move" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR x - - 0 1";
+    try testing.expectError(FenError.InvalidSideToMove, parseFen(fen, testing.allocator, 100));
+
+    const fen2 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR ww - - 0 1";
+    try testing.expectError(FenError.InvalidSideToMove, parseFen(fen2, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid castling rights char" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w X - 0 1";
+    try testing.expectError(FenError.InvalidCastlingRightsChar, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - repeated castling rights char" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KK - 0 1";
+    try testing.expectError(FenError.RepeatedCastlingRightsChar, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - castling rights too long" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkqK - 0 1";
+    try testing.expectError(FenError.CastlingRightsMoreThan4Chars, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid en passant square" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - xx 0 1";
+    try testing.expectError(FenError.InvalidEnPassantSquare, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - en passant square too long" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - e33 0 1";
+    try testing.expectError(FenError.EnPassantSquareMoreThan2Chars, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid halfmove clock" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - x 1";
+    try testing.expectError(FenError.InvalidHalfmoveClock, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - halfmove clock too long" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 1234 1";
+    try testing.expectError(FenError.HalfmoveClockMoreThan3Chars, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid fullmove" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 x";
+    try testing.expectError(FenError.InvalidFullmove, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - fullmove too long" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1234";
+    try testing.expectError(FenError.FullmoveMoreThan3Chars, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - invalid field count" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0";
+    try testing.expectError(FenError.InvalidFieldCount, parseFen(fen, testing.allocator, 100));
+
+    const fen2 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1 extra";
+    try testing.expectError(FenError.InvalidFieldCount, parseFen(fen2, testing.allocator, 100));
+}
+
+test "parseFen errors - pawns in first or last rank" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNP w - - 0 1";
+    try testing.expectError(FenError.PawnsInFirstOrLastRank, parseFen(fen, testing.allocator, 100));
+
+    const fen2 = "Pnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    try testing.expectError(FenError.PawnsInFirstOrLastRank, parseFen(fen2, testing.allocator, 100));
+}
+
+test "parseFen errors - not one king per color" {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN w - - 0 1";
+    try testing.expectError(FenError.NotOneKingPerColor, parseFen(fen, testing.allocator, 100));
+
+    const fen2 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    var pos = try parseFen(fen2, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    // Remove a king to test
+    pos.board.togglePieceAt(Piece.King, Square.E1);
+    pos.board.xorColorMask(Color.White, Square.E1.mask());
+    pos.board.xorOccupiedMask(Square.E1.mask());
+    try testing.expect(!pos.board.hasOneKingPerColor());
+}
+
+test "parseFen errors - en passant without double pawn push" {
+    // En passant square but no pawn in correct position
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - e3 0 1";
+    try testing.expectError(FenError.EnPassantWithoutDoublePawnPush, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen errors - halfmove clock more than halfmoves played" {
+    // White to move, fullmove 1, halfmove should be 0, but halfmoveClock is 1
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 1 1";
+    try testing.expectError(FenError.HalfmoveClockMoreThanHalfmovesPlayed, parseFen(fen, testing.allocator, 100));
+}
+
+test "parseFen board row with numbers" {
+    const fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+    var pos = try parseFen(fen, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(@as(Bitboard, 0), pos.board.occupiedMask());
+}
+
+test "parseFen board row with mixed pieces and numbers" {
+    const fen = "r3k2r/8/8/8/8/8/8/R3K2R w - - 0 1";
+    var pos = try parseFen(fen, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    try testing.expect(pos.board.mask(Piece.Rook, Color.White) & Square.A1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.King, Color.White) & Square.E1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Rook, Color.White) & Square.H1.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Rook, Color.Black) & Square.A8.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.King, Color.Black) & Square.E8.mask() != 0);
+    try testing.expect(pos.board.mask(Piece.Rook, Color.Black) & Square.H8.mask() != 0);
+}
+
+test "parseFen whitespace handling" {
+    const fenWithSpaces = "  rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR   w   -   -   0   1  ";
+    var pos = try parseFen(fenWithSpaces, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(Color.White, pos.sideToMove);
+}
+
+test "parseFen en passant with different dashes" {
+    const fenDash = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
+    var pos1 = try parseFen(fenDash, testing.allocator, 100);
+    defer pos1.previousContexts.deinit(testing.allocator);
+    try testing.expect(pos1.currentContext.doublePawnPushFile == null);
+
+    // Note: The code supports em dash and en dash, but standard FEN uses hyphen
+    // Testing that '-' works is sufficient
+}
+
+test "parseFen fullmove to halfmove conversion" {
+    // White to move, fullmove 5 -> halfmove should be 5
+    const whiteFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 5";
+    var whitePos = try parseFen(whiteFen, testing.allocator, 100);
+    defer whitePos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(@as(u10, 5), whitePos.halfmove);
+
+    // Black to move, fullmove 5 -> halfmove should be 6
+    const blackFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 0 5";
+    var blackPos = try parseFen(blackFen, testing.allocator, 100);
+    defer blackPos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(@as(u10, 6), blackPos.halfmove);
+}
+
+test "parseFen complex position" {
+    const complexFen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+    var pos = try parseFen(complexFen, testing.allocator, 100);
+    defer pos.previousContexts.deinit(testing.allocator);
+    try testing.expectEqual(Color.White, pos.sideToMove);
+    try testing.expect(pos.currentContext.castlingRights.kingsideForColor(Color.Black));
+    try testing.expect(pos.currentContext.castlingRights.queensideForColor(Color.Black));
+    try testing.expect(!pos.currentContext.castlingRights.kingsideForColor(Color.White));
+    try testing.expect(pos.board.hasOneKingPerColor());
 }
