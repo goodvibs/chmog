@@ -46,25 +46,26 @@ pub const Board = struct {
     }
 
     pub fn doColorMasksUnionToOccupiedMask(self: *const Board) bool {
-        return self.colorMask(Color.White) | self.colorMask(Color.Black) == self.pieceMask(Piece.Null);
+        return self.colorMask(Color.White) | self.colorMask(Color.Black) == self.occupiedMask();
     }
 
     pub fn doColorMasksNotConflict(self: *const Board) bool {
         return self.colorMask(Color.White) & self.colorMask(Color.Black) == 0;
     }
 
-    pub fn doPieceMasksUnionToOccupiedMask(self: *const Board) bool {
+    pub fn arePieceMasksValid(self: *const Board) bool {
         var pieceMasksUnion: Bitboard = 0;
         for (self.pieceMasks[@as(usize, Piece.Pawn.int())..]) |pieceMask_| {
+            if (pieceMasksUnion & pieceMask_ != 0) return false;
             pieceMasksUnion |= pieceMask_;
         }
         return pieceMasksUnion == self.occupiedMask();
     }
 
-    pub fn doMasksNotConflict(self: *const Board) bool {
+    pub fn isValid(self: *const Board) bool {
         return self.doColorMasksUnionToOccupiedMask() and
             self.doColorMasksNotConflict() and
-            self.doPieceMasksUnionToOccupiedMask();
+            self.arePieceMasksValid();
     }
 
     pub fn hasOneKingPerColor(self: *const Board) bool {
@@ -83,10 +84,6 @@ pub const Board = struct {
         return self.isSquareAttacked(Square.fromMask(kingMask) catch unreachable, color.other());
     }
 
-    pub fn occupiedMask(self: *const Board) Bitboard {
-        return self.pieceMasks[0];
-    }
-
     pub fn pieceMask(self: *const Board, piece: Piece) Bitboard {
         return self.pieceMasks[@as(usize, piece.int())];
     }
@@ -99,16 +96,20 @@ pub const Board = struct {
         return self.pieceMask(piece) & self.colorMask(color);
     }
 
+    pub fn occupiedMask(self: *const Board) Bitboard {
+        return self.pieceMask(Piece.Null);
+    }
+
     pub fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
-    pub fn togglePieceAt(self: *Board, piece: Piece, at: Square) void {
-        self.pieceMasks[@as(usize, piece.int())] ^= at.mask();
+    pub fn xorPieceMask(self: *Board, piece: Piece, mask_: Bitboard) void {
+        self.pieceMasks[@as(usize, piece.int())] ^= mask_;
     }
 
     pub fn xorOccupiedMask(self: *Board, mask_: Bitboard) void {
-        self.pieceMasks[0] ^= mask_;
+        self.xorPieceMask(Piece.Null, mask_);
     }
 
     pub fn isSquareAttacked(self: *const Board, square: Square, byColor: Color) bool {
@@ -184,3 +185,69 @@ pub const Board = struct {
         }
     }
 };
+
+const testing = @import("std").testing;
+
+test "board blank" {
+    const board = Board.blank();
+    try testing.expectEqual(@as(Bitboard, 0), board.occupiedMask());
+    try testing.expectEqual(@as(Bitboard, 0), board.pieceMask(Piece.Pawn));
+    try testing.expectEqual(@as(Bitboard, 0), board.colorMask(Color.White));
+    try testing.expectEqual(@as(Bitboard, 0), board.colorMask(Color.Black));
+}
+
+test "board initial" {
+    const board = Board.initial();
+    try testing.expect(board.hasOneKingPerColor());
+    try testing.expect(board.hasNoPawnsInFirstNorLastRank());
+    try testing.expect(board.isValid());
+
+    try testing.expect(board.colorMask(Color.White) != 0);
+    try testing.expect(board.colorMask(Color.Black) != 0);
+
+    try testing.expectEqual(board.occupiedMask(), board.colorMask(Color.White) | board.colorMask(Color.Black));
+}
+
+test "board mask operations" {
+    var board = Board.blank();
+    const e4 = Square.E4;
+
+    board.xorPieceMask(Piece.Pawn, e4.mask());
+    board.xorColorMask(Color.White, e4.mask());
+    board.xorOccupiedMask(e4.mask());
+
+    try testing.expect(board.pieceMask(Piece.Pawn) & e4.mask() != 0);
+    try testing.expect(board.colorMask(Color.White) & e4.mask() != 0);
+    try testing.expect(board.occupiedMask() & e4.mask() != 0);
+    try testing.expectEqual(e4.mask(), board.mask(Piece.Pawn, Color.White));
+
+    board.xorPieceMask(Piece.Pawn, e4.mask());
+    board.xorColorMask(Color.White, e4.mask());
+    board.xorOccupiedMask(e4.mask());
+
+    try testing.expect(board.pieceMask(Piece.Pawn) & e4.mask() == 0);
+    try testing.expect(board.colorMask(Color.White) & e4.mask() == 0);
+    try testing.expect(board.occupiedMask() & e4.mask() == 0);
+}
+
+test "board isColorInCheck" {
+    const board = Board.initial();
+    try testing.expect(!board.isColorInCheck(Color.White));
+    try testing.expect(!board.isColorInCheck(Color.Black));
+}
+
+test "board isSquareAttacked" {
+    const board = Board.initial();
+
+    try testing.expect(!board.isSquareAttacked(Square.E4, Color.White));
+    try testing.expect(!board.isSquareAttacked(Square.E4, Color.Black));
+
+    var testBoard = Board.blank();
+    testBoard.xorPieceMask(Piece.Pawn, Square.E2.mask());
+    testBoard.xorColorMask(Color.White, Square.E2.mask());
+    testBoard.xorOccupiedMask(Square.E2.mask());
+
+    try testing.expect(testBoard.isSquareAttacked(Square.D3, Color.White));
+    try testing.expect(testBoard.isSquareAttacked(Square.F3, Color.White));
+    try testing.expect(!testBoard.isSquareAttacked(Square.E3, Color.White));
+}

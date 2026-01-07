@@ -76,12 +76,15 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 }
             },
             'p', 'n', 'b', 'r', 'q', 'k', 'P', 'N', 'B', 'R', 'Q', 'K' => {
-                const isUpper = char >= 'A';
+                const isUpper = char < 'a';
                 const piece = (if (isUpper) Piece.fromUppercaseAscii(char) else Piece.fromLowercaseAscii(char));
+                assert(piece != Piece.Null);
                 const color = Color.fromIsWhite(isUpper);
                 const square = Square.fromRankAndFile(rank, file);
 
-                board.togglePieceAt(piece, square);
+                assert(board.occupiedMask() & square.mask() == 0);
+
+                board.xorPieceMask(piece, square.mask());
                 board.xorColorMask(color, square.mask());
                 board.xorOccupiedMask(square.mask());
 
@@ -258,7 +261,7 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         .sideToMove = turn,
     };
 
-    assert(pos.board.doMasksNotConflict());
+    assert(pos.board.isValid());
 
     if (!pos.doHalfmoveAndSideToMoveAgree()) {
         return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
@@ -291,7 +294,7 @@ const testing = @import("std").testing;
 
 test "parseFen starting position" {
     const startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    var pos = try parseFen(startingFen, testing.allocator, 100);
+    var pos = try parseFen(startingFen, testing.allocator, 0);
     defer pos.previousContexts.deinit(testing.allocator);
 
     try testing.expectEqual(Color.White, pos.sideToMove);
@@ -472,7 +475,7 @@ test "parseFen errors - not one king per color" {
     var pos = try parseFen(fen2, testing.allocator, 100);
     defer pos.previousContexts.deinit(testing.allocator);
     // Remove a king to test
-    pos.board.togglePieceAt(Piece.King, Square.E1);
+    pos.board.xorPieceMask(Piece.King, Square.E1.mask());
     pos.board.xorColorMask(Color.White, Square.E1.mask());
     pos.board.xorOccupiedMask(Square.E1.mask());
     try testing.expect(!pos.board.hasOneKingPerColor());
