@@ -32,6 +32,7 @@ pub const FenError = error{
     ZeroNotAllowedInBoardRow,
     NineNotAllowedInBoardRow,
     BoardRowLengthExceeded,
+    BoardRowLengthInsufficient,
     InvalidCharInBoardRow,
     InvalidSideToMove,
     InvalidCastlingRightsChar,
@@ -44,6 +45,7 @@ pub const FenError = error{
     HalfmoveClockMoreThan3Chars,
     HalfmoveClockMoreThanHalfmovesPlayed,
     InvalidFullmove,
+    FullmoveZero,
     FullmoveMoreThan3Chars,
     InvalidFieldCount,
     PawnsInFirstOrLastRank,
@@ -56,6 +58,7 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
         return FenError.BoardRowLengthExceeded;
     }
     var file = File.A;
+    var rowComplete = false;
     for (fenBoardRow) |char| {
         switch (char) {
             '0' => {
@@ -65,12 +68,13 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 return FenError.NineNotAllowedInBoardRow;
             },
             '1'...'8' => {
-                const emptySquares: u3 = @truncate(char - '0');
-                const squaresLeftInRow = File.H.int() - file.int();
+                const emptySquares: u4 = @truncate(char - '0');
+                const squaresLeftInRow: u4 = @as(u4, File.H.int()) - @as(u4, file.int()) + 1;
                 if (emptySquares == squaresLeftInRow) {
+                    rowComplete = true;
                     break;
                 } else if (emptySquares < squaresLeftInRow) {
-                    file = file.rightN(emptySquares) catch unreachable;
+                    file = file.rightN(@truncate(emptySquares)) catch unreachable;
                 } else {
                     return FenError.BoardRowLengthExceeded;
                 }
@@ -88,10 +92,16 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 board.xorColorMask(color, square.mask());
                 board.xorOccupiedMask(square.mask());
 
-                file = file.right() catch break;
+                file = file.right() catch {
+                    rowComplete = true;
+                    break;
+                };
             },
             else => return FenError.InvalidCharInBoardRow,
         }
+    }
+    if (!rowComplete) {
+        return FenError.BoardRowLengthInsufficient;
     }
 }
 
@@ -128,6 +138,9 @@ fn parseFenTurn(fenTurn: []const u8) !Color {
 
 fn parseFenCastling(fenCastling: []const u8) !CastlingRights {
     if (fenCastling.len <= 4) {
+        if (fenCastling.len == 1 and fenCastling[0] == '-') {
+            return CastlingRights.none();
+        }
         var res = CastlingRights.none();
         for (fenCastling) |char| {
             const old = res.mask();
@@ -195,6 +208,7 @@ fn parseFenFullmove(fenFullmove: []const u8) !u9 {
                 return FenError.InvalidFullmove;
             }
         }
+        if (int == 0) return FenError.FullmoveZero;
         return @truncate(int);
     } else {
         return FenError.FullmoveMoreThan3Chars;
@@ -236,11 +250,13 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     const fullmove = try parseFenFullmove(fenParts[5]);
     const halfmove = fullmoveToHalfmove(fullmove, turn);
 
-    const doublePawnPushFile: ?File = if (enPassantSquare) |square| blk: {
-        if (halfmove < 1 or square.rank().mask() & board.colorMask(turn.other()) & board.pieceMask(Piece.Pawn) == 0) {
+    const doublePawnPushFile: ?File = if (enPassantSquare) |epSquare| blk: {
+        const pawnRank = if (turn == Color.Black) Rank.Four else Rank.Five;
+        const pawnSquare = Square.fromRankAndFile(pawnRank, epSquare.file());
+        if (halfmove < 1 or pawnSquare.mask() & board.colorMask(turn.other()) & board.pieceMask(Piece.Pawn) == 0) {
             return FenError.EnPassantWithoutDoublePawnPush;
         }
-        break :blk square.file();
+        break :blk epSquare.file();
     } else null;
 
     const positionContext = PositionContext{
@@ -252,10 +268,13 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         .capturedPiece = Piece.Null,
     };
 
+    var previousContexts = try ArrayList(PositionContext).initCapacity(alloc, contextsCapacity);
+    errdefer previousContexts.deinit(alloc);
+
     const pos = Position{
         .board = board,
         .currentContext = positionContext,
-        .previousContexts = try ArrayList(PositionContext).initCapacity(alloc, contextsCapacity),
+        .previousContexts = previousContexts,
         .halfmove = halfmove,
         .gameResult = GameResult.None,
         .sideToMove = turn,
@@ -264,6 +283,10 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     assert(pos.board.isValid());
 
     if (!pos.doHalfmoveAndSideToMoveAgree()) {
+        return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
+    }
+
+    if (!pos.isHalfmoveClockPlausible()) {
         return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
     }
 
@@ -283,11 +306,8 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 }
 
 fn fullmoveToHalfmove(fullmove: u9, turn: Color) u10 {
-    if (turn == Color.White) {
-        return @as(u10, fullmove);
-    } else {
-        return @as(u10, fullmove) + 1;
-    }
+    assert(fullmove > 0);
+    return (@as(u10, fullmove) - 1) * 2 + @as(u10, turn.int());
 }
 
 const testing = @import("std").testing;
@@ -308,7 +328,6 @@ test "parseFen board parsing" {
     var pos = try parseFen(fen, testing.allocator, 100);
     defer pos.previousContexts.deinit(testing.allocator);
 
-    // Check that pieces are placed correctly
     try testing.expect(pos.board.mask(Piece.Rook, Color.White) & Square.A1.mask() != 0);
     try testing.expect(pos.board.mask(Piece.Knight, Color.White) & Square.B1.mask() != 0);
     try testing.expect(pos.board.mask(Piece.Bishop, Color.White) & Square.C1.mask() != 0);
@@ -371,11 +390,12 @@ test "parseFen en passant" {
 }
 
 test "parseFen halfmove clock and fullmove" {
+    // fullmove 10, white to move -> halfmove = (10-1)*2 = 18
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 5 10";
     var pos = try parseFen(fen, testing.allocator, 100);
     defer pos.previousContexts.deinit(testing.allocator);
     try testing.expectEqual(@as(u7, 5), pos.currentContext.halfmoveClock);
-    try testing.expectEqual(@as(u10, 10), pos.halfmove);
+    try testing.expectEqual(@as(u10, 18), pos.halfmove);
 }
 
 test "parseFen errors - invalid board row length" {
@@ -468,7 +488,8 @@ test "parseFen errors - pawns in first or last rank" {
 }
 
 test "parseFen errors - not one king per color" {
-    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN w - - 0 1";
+    // Board with no white king (replaced with a rook)
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQRBNR w - - 0 1";
     try testing.expectError(FenError.NotOneKingPerColor, parseFen(fen, testing.allocator, 100));
 
     const fen2 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
@@ -494,10 +515,12 @@ test "parseFen errors - halfmove clock more than halfmoves played" {
 }
 
 test "parseFen board row with numbers" {
-    const fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+    // Empty rows with just kings (valid minimal position)
+    const fen = "k7/8/8/8/8/8/8/7K w - - 0 1";
     var pos = try parseFen(fen, testing.allocator, 100);
     defer pos.previousContexts.deinit(testing.allocator);
-    try testing.expectEqual(@as(Bitboard, 0), pos.board.occupiedMask());
+    // Only 2 pieces on board (the kings)
+    try testing.expectEqual(@as(u32, 2), @popCount(pos.board.occupiedMask()));
 }
 
 test "parseFen board row with mixed pieces and numbers" {
@@ -530,17 +553,17 @@ test "parseFen en passant with different dashes" {
 }
 
 test "parseFen fullmove to halfmove conversion" {
-    // White to move, fullmove 5 -> halfmove should be 5
+    // White to move, fullmove 5 -> halfmove should be (5-1)*2 = 8
     const whiteFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 5";
     var whitePos = try parseFen(whiteFen, testing.allocator, 100);
     defer whitePos.previousContexts.deinit(testing.allocator);
-    try testing.expectEqual(@as(u10, 5), whitePos.halfmove);
+    try testing.expectEqual(@as(u10, 8), whitePos.halfmove);
 
-    // Black to move, fullmove 5 -> halfmove should be 6
+    // Black to move, fullmove 5 -> halfmove should be (5-1)*2 + 1 = 9
     const blackFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 0 5";
     var blackPos = try parseFen(blackFen, testing.allocator, 100);
     defer blackPos.previousContexts.deinit(testing.allocator);
-    try testing.expectEqual(@as(u10, 6), blackPos.halfmove);
+    try testing.expectEqual(@as(u10, 9), blackPos.halfmove);
 }
 
 test "parseFen complex position" {
