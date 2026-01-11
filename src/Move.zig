@@ -1,9 +1,8 @@
 const std = @import("std");
-
-const Color = @import("../mod.zig").Color;
-const Square = @import("../mod.zig").Square;
-const PromotionPiece = @import("../mod.zig").PromotionPiece;
-const MoveFlag = @import("mod.zig").MoveFlag;
+const Color = @import("./mod.zig").Color;
+const Square = @import("./mod.zig").Square;
+const PromotionPiece = @import("./mod.zig").PromotionPiece;
+const MoveFlag = @import("./mod.zig").MoveFlag;
 
 const KINGSIDE_CASTLING_BY_COLOR = [2]Move{
     Move.newNonPromotion(Square.E1, Square.G1, MoveFlag.Castling),
@@ -92,7 +91,7 @@ test "move castling" {
     try testing.expectEqual(Square.E1, whiteKingside.from);
     try testing.expectEqual(Square.G1, whiteKingside.to);
     try testing.expectEqual(MoveFlag.Castling, whiteKingside.flag);
-    
+
     const blackQueenside = Move.queensideCastling(Color.Black);
     try testing.expectEqual(Square.E8, blackQueenside.from);
     try testing.expectEqual(Square.C8, blackQueenside.to);
@@ -101,15 +100,15 @@ test "move castling" {
 
 test "move uci" {
     var buffer: [10]u8 = undefined;
-    
+
     const normalMove = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
     const uci = try normalMove.uci(&buffer);
     try testing.expectEqualSlices(u8, "e2e4", uci);
-    
+
     const promotionMove = Move.newPromotion(Square.E7, Square.E8, PromotionPiece.Queen);
     const uciPromo = try promotionMove.uci(&buffer);
     try testing.expectEqualSlices(u8, "e7e8q", uciPromo);
-    
+
     const castlingMove = Move.kingsideCastling(Color.White);
     const uciCastle = try castlingMove.uci(&buffer);
     try testing.expectEqualSlices(u8, "e1g1", uciCastle);

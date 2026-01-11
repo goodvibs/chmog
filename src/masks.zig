@@ -1,5 +1,5 @@
-const Bitboard = @import("mod.zig").Bitboard;
-const Square = @import("mod.zig").Square;
+const Bitboard = @import("./mod.zig").Bitboard;
+const Square = @import("./mod.zig").Square;
 
 pub const FILE_A: Bitboard = 0x8080808080808080;
 pub const FILE_B = FILE_A >> 1;
