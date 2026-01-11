@@ -1,8 +1,8 @@
-const Bitboard = @import("mod.zig").Bitboard;
-const SquareToBitboard = @import("mod.zig").utils.SquareToBitboard;
-const Rank = @import("mod.zig").Rank;
-const File = @import("mod.zig").File;
-const QueenlikeMoveDirection = @import("mod.zig").utils.QueenlikeMoveDirection;
+const Bitboard = @import("./mod.zig").Bitboard;
+const SquareToBitboard = @import("./mod.zig").utils.SquareToBitboard;
+const Rank = @import("./mod.zig").Rank;
+const File = @import("./mod.zig").File;
+const QueenlikeMoveDirection = @import("./mod.zig").utils.QueenlikeMoveDirection;
 
 pub const Square = enum(u6) {
     A8 = 0,

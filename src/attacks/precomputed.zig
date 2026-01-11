@@ -1,8 +1,8 @@
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
 const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
-const multiKnightAttacks = @import("mod.zig").manual.multiKnightAttacks;
-const multiKingAttacks = @import("mod.zig").manual.multiKingAttacks;
+const multiKnightAttacks = @import("./mod.zig").manual.multiKnightAttacks;
+const multiKingAttacks = @import("./mod.zig").manual.multiKingAttacks;
 
 fn singlePieceAttacksFromMulti(comptime multiPieceAttacks: fn (Bitboard) Bitboard) fn ([1]Square) Bitboard {
     return struct {
