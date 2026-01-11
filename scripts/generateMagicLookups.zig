@@ -9,7 +9,7 @@ const manual = chmog.attacks.manual;
 const computeBishopRelevantMask = chmog.attacks.magic.computeBishopRelevantMask;
 const computeRookRelevantMask = chmog.attacks.magic.computeRookRelevantMask;
 const clap = @import("clap");
-const writeBinaryData = @import("utils.zig").writeBinaryData;
+const writeBinaryData = @import("binUtils").writeBinaryData;
 
 fn bishopRelevantMask(s: Square) Bitboard {
     return computeBishopRelevantMask([1]Square{s});

@@ -12,16 +12,23 @@ pub fn build(b: *Build) void {
         .optimize = OptimizeMode.Debug,
     });
 
-    const clap = b.dependency("clap", .{});
+    const clap = b.dependency("clap", .{}).module("clap");
+
+    const binUtils = b.createModule(.{
+        .root_source_file = b.path("binUtils.zig"),
+        .target = target,
+        .optimize = OptimizeMode.ReleaseFast,
+    });
 
     // Zobrist generation
     const genZobristMod = b.createModule(.{
-        .root_source_file = b.path("bin/generateZobristKeys.zig"),
+        .root_source_file = b.path("scripts/generateZobristKeys.zig"),
         .target = target,
         .optimize = OptimizeMode.Debug,
     });
     genZobristMod.addImport("chmog", baseLibMod);
-    genZobristMod.addImport("clap", clap.module("clap"));
+    genZobristMod.addImport("clap", clap);
+    genZobristMod.addImport("binUtils", binUtils);
 
     const genZobristExec = b.addExecutable(.{
         .name = "gen-zobrist",
@@ -38,12 +45,13 @@ pub fn build(b: *Build) void {
 
     // Magic generation
     const genMagicMod = b.createModule(.{
-        .root_source_file = b.path("bin/generateMagicLookups.zig"),
+        .root_source_file = b.path("scripts/generateMagicLookups.zig"),
         .target = target,
         .optimize = OptimizeMode.Debug,
     });
     genMagicMod.addImport("chmog", baseLibMod);
-    genMagicMod.addImport("clap", clap.module("clap"));
+    genMagicMod.addImport("clap", clap);
+    genMagicMod.addImport("binUtils", binUtils);
 
     const genMagicExec = b.addExecutable(.{
         .name = "gen-magic",
@@ -103,12 +111,12 @@ pub fn build(b: *Build) void {
 
     // Expose other scripts
     const moveDirectionMod = b.createModule(.{
-        .root_source_file = b.path("bin/moveDirection.zig"),
+        .root_source_file = b.path("scripts/moveDirection.zig"),
         .target = target,
         .optimize = optimize,
     });
     moveDirectionMod.addImport("chmog", fullLibMod);
-    moveDirectionMod.addImport("clap", clap.module("clap"));
+    moveDirectionMod.addImport("clap", clap);
     const moveDirectionExec = b.addExecutable(.{
         .name = "get-move-direction",
         .root_module = moveDirectionMod,

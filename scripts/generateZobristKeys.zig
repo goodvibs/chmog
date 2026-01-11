@@ -1,7 +1,7 @@
 const std = @import("std");
 const NUM_KEYS = @import("chmog").zobrist.NUM_KEYS;
 const clap = @import("clap");
-const writeBinaryData = @import("utils.zig").writeBinaryData;
+const writeBinaryData = @import("binUtils").writeBinaryData;
 
 const params = clap.parseParamsComptime(
     \\-h, --help                 Display this help and exit.
