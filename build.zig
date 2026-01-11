@@ -14,8 +14,8 @@ pub fn build(b: *Build) void {
 
     const clap = b.dependency("clap", .{}).module("clap");
 
-    const binUtils = b.createModule(.{
-        .root_source_file = b.path("binUtils.zig"),
+    const bin_utils = b.createModule(.{
+        .root_source_file = b.path("bin_utils.zig"),
         .target = target,
         .optimize = OptimizeMode.ReleaseFast,
     });
@@ -28,7 +28,7 @@ pub fn build(b: *Build) void {
     });
     genZobristMod.addImport("chmog", baseLibMod);
     genZobristMod.addImport("clap", clap);
-    genZobristMod.addImport("binUtils", binUtils);
+    genZobristMod.addImport("bin_utils", bin_utils);
 
     const genZobristExec = b.addExecutable(.{
         .name = "gen-zobrist",
@@ -51,7 +51,7 @@ pub fn build(b: *Build) void {
     });
     genMagicMod.addImport("chmog", baseLibMod);
     genMagicMod.addImport("clap", clap);
-    genMagicMod.addImport("binUtils", binUtils);
+    genMagicMod.addImport("bin_utils", bin_utils);
 
     const genMagicExec = b.addExecutable(.{
         .name = "gen-magic",
