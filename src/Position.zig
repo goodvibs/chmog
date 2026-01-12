@@ -30,7 +30,7 @@ pub const Position = struct {
     pub fn initial(allocator: std.mem.Allocator, previousContextsCapacity: usize) !Position {
         return Position{
             .board = Board.initial(),
-            .currentContext = PositionContext.blank(),
+            .currentContext = PositionContext.new(),
             .previousContexts = try ArrayList(PositionContext).initCapacity(allocator, previousContextsCapacity),
             .halfmove = 0,
             .gameResult = GameResult.None,
