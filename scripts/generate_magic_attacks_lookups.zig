@@ -30,8 +30,6 @@ pub fn main() !void {
     var da = std.heap.DebugAllocator(.{}){};
     const allocator = da.allocator();
     defer _ = da.deinit();
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
 
     var diag = clap.Diagnostic{};
 
