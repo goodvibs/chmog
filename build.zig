@@ -22,7 +22,7 @@ pub fn build(b: *Build) void {
 
     // Zobrist generation
     const genZobristMod = b.createModule(.{
-        .root_source_file = b.path("scripts/generateZobristKeys.zig"),
+        .root_source_file = b.path("scripts/generate_zobrist_keys.zig"),
         .target = target,
         .optimize = OptimizeMode.Debug,
     });
@@ -45,7 +45,7 @@ pub fn build(b: *Build) void {
 
     // Magic generation
     const genMagicMod = b.createModule(.{
-        .root_source_file = b.path("scripts/generateMagicLookups.zig"),
+        .root_source_file = b.path("scripts/generate_magic_attacks_lookups.zig"),
         .target = target,
         .optimize = OptimizeMode.Debug,
     });
@@ -111,20 +111,20 @@ pub fn build(b: *Build) void {
 
     // Expose other scripts
     const moveDirectionMod = b.createModule(.{
-        .root_source_file = b.path("scripts/moveDirection.zig"),
+        .root_source_file = b.path("scripts/what_move_direction.zig"),
         .target = target,
         .optimize = optimize,
     });
     moveDirectionMod.addImport("chmog", fullLibMod);
     moveDirectionMod.addImport("clap", clap);
     const moveDirectionExec = b.addExecutable(.{
-        .name = "get-move-direction",
+        .name = "what-move-direction",
         .root_module = moveDirectionMod,
     });
     const moveDirectionRun = b.addRunArtifact(moveDirectionExec);
     if (b.args) |args| {
         moveDirectionRun.addArgs(args);
     }
-    const moveDirectionStep = b.step("get-move-direction", "Get move direction");
+    const moveDirectionStep = b.step("what-move-direction", "Look up move direction");
     moveDirectionStep.dependOn(&moveDirectionRun.step);
 }
