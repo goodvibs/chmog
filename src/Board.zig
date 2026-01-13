@@ -60,7 +60,7 @@ pub const Board = struct {
 
     pub fn arePieceMasksValid(self: *const Board) bool {
         var pieceMasksUnion: Bitboard = 0;
-        for (self.pieceMasks[@as(usize, Piece.Pawn.int())..]) |pieceMask_| {
+        inline for (self.pieceMasks[@as(usize, comptime Piece.Pawn.int())..]) |pieceMask_| {
             if (pieceMasksUnion & pieceMask_ != 0) return false;
             pieceMasksUnion |= pieceMask_;
         }
