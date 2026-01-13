@@ -1,4 +1,7 @@
 const mem = @import("std").mem;
+const Writer = @import("std").Io.Writer;
+const Rank = @import("./mod.zig").Rank;
+const File = @import("./mod.zig").File;
 const assert = @import("std").debug.assert;
 const Bitboard = @import("./mod.zig").Bitboard;
 const masks = @import("./mod.zig").masks;
@@ -14,6 +17,8 @@ const singleBishopAttacks = @import("./mod.zig").attacks.singleBishopAttacks;
 const singleRookAttacks = @import("./mod.zig").attacks.singleRookAttacks;
 const iterSetBits = @import("./mod.zig").utils.iterSetBits;
 const between = @import("./mod.zig").utils.between;
+
+pub const BoardRenderOptions = struct { useAscii: bool = false };
 
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
@@ -100,6 +105,35 @@ pub const Board = struct {
         return self.pieceMask(Piece.Null);
     }
 
+    pub fn isOccupiedAtSquare(self: *const Board, square: Square) bool {
+        return self.occupiedMask() & square.mask() != 0;
+    }
+
+    pub fn colorAtSquare(self: *const Board, square: Square) ?Color {
+        if (self.colorMask(Color.White) & square.mask() != 0) {
+            assert(self.isOccupiedAtSquare(square));
+            return Color.White;
+        } else if (self.colorMask(Color.Black) & square.mask() != 0) {
+            assert(self.isOccupiedAtSquare(square));
+            return Color.Black;
+        } else {
+            assert(!self.isOccupiedAtSquare(square));
+            return null;
+        }
+    }
+
+    pub fn pieceAtSquare(self: *const Board, square: Square) Piece {
+        inline for (@as(usize, comptime Piece.Pawn.int())..@as(usize, comptime Piece.King.int() + 1)) |pieceInt| {
+            const piece = Piece.fromInt(pieceInt) catch unreachable;
+            if (self.pieceMask(piece) & square.mask() != 0) {
+                assert(self.isOccupiedAtSquare(square));
+                return piece;
+            }
+        }
+        assert(!self.isOccupiedAtSquare(square));
+        return Piece.Null;
+    }
+
     pub fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
@@ -183,6 +217,50 @@ pub const Board = struct {
 
             return false;
         }
+    }
+
+    pub fn render(self: *const Board, options: BoardRenderOptions, out: *Writer) !void {
+        _ = try out.write("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n");
+
+        for (0..8) |rankIdx| {
+            const rank = Rank.fromInt(@intCast(rankIdx));
+            const rankChar = rank.char();
+
+            try out.print("{c} │", .{rankChar});
+
+            for (0..8) |fileIdx| {
+                const file = File.fromInt(@intCast(fileIdx));
+                const square = Square.fromRankAndFile(rank, file);
+
+                const occupied = self.isOccupiedAtSquare(square);
+
+                if (occupied) {
+                    const piece = self.pieceAtSquare(square);
+                    assert(piece != Piece.Null);
+                    const color = self.colorAtSquare(square) orelse unreachable;
+
+                    if (options.useAscii) {
+                        const char = if (color == Color.White) piece.uppercaseAscii() else piece.lowercaseAscii();
+                        try out.print(" {c} │", .{char});
+                    } else {
+                        // Use filled symbols for black, empty symbols for white
+                        const symbol = if (color == Color.White) piece.emptyUnicode() else piece.filledUnicode();
+                        try out.print(" {u} │", .{symbol});
+                    }
+                } else {
+                    _ = try out.write("   │");
+                }
+            }
+
+            _ = try out.write("\n");
+
+            if (rankIdx < 7) {
+                _ = try out.write("  ├───┼───┼───┼───┼───┼───┼───┼───┤\n");
+            }
+        }
+
+        _ = try out.write("  └───┴───┴───┴───┴───┴───┴───┴───┘\n");
+        _ = try out.write("    a   b   c   d   e   f   g   h\n");
     }
 };
 

@@ -127,4 +127,22 @@ pub fn build(b: *Build) void {
     }
     const moveDirectionStep = b.step("what-move-direction", "Look up move direction");
     moveDirectionStep.dependOn(&moveDirectionRun.step);
+
+    const renderMod = b.createModule(.{
+        .root_source_file = b.path("scripts/render.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    renderMod.addImport("chmog", fullLibMod);
+    renderMod.addImport("clap", clap);
+    const renderExec = b.addExecutable(.{
+        .name = "render",
+        .root_module = renderMod,
+    });
+    const renderRun = b.addRunArtifact(renderExec);
+    if (b.args) |args| {
+        renderRun.addArgs(args);
+    }
+    const renderStep = b.step("render", "Render a chess position from FEN");
+    renderStep.dependOn(&renderRun.step);
 }

@@ -1,7 +1,3 @@
-pub const Charboard = @import("bitboard_utils.zig").Charboard;
-pub const bbToCb = @import("bitboard_utils.zig").bbToCb;
-pub const cbToBb = @import("bitboard_utils.zig").cbToBb;
-pub const renderBitboard = @import("bitboard_utils.zig").renderBitboard;
 pub const edgeToEdge = @import("bitboard_utils.zig").edgeToEdge;
 pub const between = @import("bitboard_utils.zig").between;
 pub const iterSetBits = @import("bitboard_utils.zig").iterSetBits;

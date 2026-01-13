@@ -6,54 +6,6 @@ const TwoSquaresToBitboard = @import("../mod.zig").utils.TwoSquaresToBitboard;
 const QueenlikeMoveDirection = @import("../mod.zig").utils.QueenlikeMoveDirection;
 const PieceMoveDirection = @import("../mod.zig").utils.PieceMoveDirection;
 
-pub const Charboard = [8][8]u8;
-
-pub fn bbToCb(bitboard: Bitboard) Charboard {
-    var result: Charboard = undefined;
-    for (0..8) |y| {
-        for (0..8) |x| {
-            const bitIndex: u6 = @truncate(y * 8 + x);
-            if (bitboard & (Square.A8.mask() >> bitIndex) != 0) {
-                result[y][x] = 'x';
-            } else {
-                result[y][x] = '.';
-            }
-        }
-    }
-    return result;
-}
-
-pub fn cbToBb(charboard: Charboard) Bitboard {
-    var result: Bitboard = 0;
-    for (0..8) |y| {
-        for (0..8) |x| {
-            const bitIndex: u6 = @truncate(y * 8 + x);
-            if (charboard[y][x] != '.' and charboard[y][x] != ' ') {
-                result |= Square.A8.mask() >> bitIndex;
-            }
-        }
-    }
-    return result;
-}
-
-pub fn renderBitboard(bitboard: Bitboard) [90]u8 {
-    const charboard = bbToCb(bitboard);
-    var result: [9][10]u8 = undefined;
-    for (0..8) |y| {
-        for (0..8) |x| {
-            result[y][x + 1] = charboard[y][x];
-        }
-        result[y][0] = '8' - @as(u8, @truncate(y));
-        result[y][9] = '\n';
-    }
-    for (0..8) |x| {
-        result[8][x + 1] = 'A' + @as(u8, @truncate(x));
-    }
-    result[8][0] = ' ';
-    result[8][9] = '\n';
-    return @bitCast(result);
-}
-
 fn computeEdgeToEdge(squares: [2]Square) Bitboard {
     const square1 = squares[0];
     const square2 = squares[1];
@@ -143,12 +95,6 @@ pub const BitCombinationsIterator = struct {
 
 const testing = @import("std").testing;
 const ArrayList = std.ArrayList;
-
-test "bitboardCharboardConversions" {
-    const bitboard = 0xdeadbeef0000c002;
-    const charboard = bbToCb(bitboard);
-    try testing.expectEqual(bitboard, cbToBb(charboard));
-}
 
 test "iterBitCombinations" {
     {
