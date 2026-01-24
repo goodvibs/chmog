@@ -56,11 +56,11 @@ const BISHOP_MAGIC_ATTACKS_LOOKUP = bytesToValue(BishopMagicAttacksLookup, BISHO
 const ROOK_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("rookMagicAttacksLookup");
 const ROOK_MAGIC_ATTACKS_LOOKUP = bytesToValue(RookMagicAttacksLookup, ROOK_MAGIC_ATTACKS_LOOKUP_BYTES);
 
-pub fn singleBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
+pub fn slidingBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
-pub fn singleRookAttacks(from: Square, occupied: Bitboard) Bitboard {
+pub fn slidingRookAttacks(from: Square, occupied: Bitboard) Bitboard {
     return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
@@ -204,8 +204,8 @@ test "bishop attacks" {
         const relevant_mask = bishopRelevantMask(s);
         var iter = iterBitCombinations(relevant_mask);
         while (iter.next()) |occupied| {
-            const expected = manual.singleBishopAttacks(s, occupied);
-            const actual = singleBishopAttacks(s, occupied);
+            const expected = manual.slidingBishopAttacks(s, occupied);
+            const actual = slidingBishopAttacks(s, occupied);
             try testing.expectEqual(expected, actual);
         }
     }
@@ -214,8 +214,8 @@ test "bishop attacks" {
 test "more bishop attacks" {
     const occupied = Square.C6.mask() | Square.D5.mask() | Square.E4.mask() | Square.F8.mask() | Square.C5.mask();
     const from = Square.E4;
-    const expected = manual.singleBishopAttacks(from, occupied);
-    const actual = singleBishopAttacks(from, occupied);
+    const expected = manual.slidingBishopAttacks(from, occupied);
+    const actual = slidingBishopAttacks(from, occupied);
     // std.debug.print("occupied:\n {s}\n", .{renderBitboard(occupied)});
     // std.debug.print("expected:\n {s}\n", .{renderBitboard(expected)});
     // std.debug.print("actual:\n {s}\n", .{renderBitboard(actual)});
@@ -228,8 +228,8 @@ test "rook attacks" {
         const relevant_mask = rookRelevantMask(s);
         var iter = iterBitCombinations(relevant_mask);
         while (iter.next()) |occupied| {
-            const expected = manual.singleRookAttacks(s, occupied);
-            const actual = singleRookAttacks(s, occupied);
+            const expected = manual.slidingRookAttacks(s, occupied);
+            const actual = slidingRookAttacks(s, occupied);
             try testing.expectEqual(expected, actual);
         }
     }
@@ -238,8 +238,8 @@ test "rook attacks" {
 test "more rook attacks" {
     const occupied = Square.C6.mask() | Square.D5.mask() | Square.E4.mask() | Square.F8.mask() | Square.C5.mask() | Square.B4.mask() | Square.H4.mask();
     const from = Square.E4;
-    const expected = manual.singleRookAttacks(from, occupied);
-    const actual = singleRookAttacks(from, occupied);
+    const expected = manual.slidingRookAttacks(from, occupied);
+    const actual = slidingRookAttacks(from, occupied);
     // std.debug.print("occupied:\n {s}\n", .{renderBitboard(occupied)});
     // std.debug.print("expected:\n {s}\n", .{renderBitboard(expected)});
     // std.debug.print("actual:\n {s}\n", .{renderBitboard(actual)});

@@ -1,4 +1,4 @@
-const std = @import("std");
+const assert = @import("std").debug.assert;
 
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
@@ -65,16 +65,21 @@ pub fn iterBitCombinations(bitboard: Bitboard) BitCombinationsIterator {
     };
 }
 
+pub fn lsbMask(mask: Bitboard) Bitboard {
+    assert(mask != 0);
+    return mask & (0 -% mask);
+}
+
 pub const MaskBitsIterator = struct {
     currentMask: Bitboard,
 
     pub fn next(self: *MaskBitsIterator) ?Bitboard {
         if (self.currentMask == 0) return null;
 
-        const mask = self.currentMask & (0 -% self.currentMask);
-        self.currentMask ^= mask;
+        const leastSignificantBitMask = lsbMask(self.currentMask);
+        self.currentMask ^= leastSignificantBitMask;
 
-        return mask;
+        return leastSignificantBitMask;
     }
 };
 
@@ -94,7 +99,7 @@ pub const BitCombinationsIterator = struct {
 };
 
 const testing = @import("std").testing;
-const ArrayList = std.ArrayList;
+const ArrayList = @import("std").ArrayList;
 
 test "iterBitCombinations" {
     {

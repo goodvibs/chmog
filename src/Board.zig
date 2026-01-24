@@ -8,13 +8,13 @@ const masks = @import("./mod.zig").masks;
 const Piece = @import("./mod.zig").Piece;
 const Color = @import("./mod.zig").Color;
 const Square = @import("./mod.zig").Square;
-const singleKnightAttacks = @import("./mod.zig").attacks.singleKnightAttacks;
-const singleKingAttacks = @import("./mod.zig").attacks.singleKingAttacks;
-const multiPawnAttacks = @import("./mod.zig").attacks.multiPawnAttacks;
-const multiKnightAttacks = @import("./mod.zig").attacks.multiKnightAttacks;
-const multiKingAttacks = @import("./mod.zig").attacks.multiKingAttacks;
-const singleBishopAttacks = @import("./mod.zig").attacks.singleBishopAttacks;
-const singleRookAttacks = @import("./mod.zig").attacks.singleRookAttacks;
+const knightAttacks = @import("./mod.zig").attacks.knightAttacks;
+const kingAttacks = @import("./mod.zig").attacks.kingAttacks;
+const pawnsAttacks = @import("./mod.zig").attacks.pawnsAttacks;
+const knightsAttacks = @import("./mod.zig").attacks.knightsAttacks;
+const kingsAttacks = @import("./mod.zig").attacks.kingsAttacks;
+const slidingBishopAttacks = @import("./mod.zig").attacks.slidingBishopAttacks;
+const slidingRookAttacks = @import("./mod.zig").attacks.slidingRookAttacks;
 const iterSetBits = @import("./mod.zig").utils.iterSetBits;
 const between = @import("./mod.zig").utils.between;
 
@@ -151,9 +151,9 @@ pub const Board = struct {
         const occupied = self.occupiedMask();
         const attackers = self.colorMask(byColor);
 
-        const relevantPawnsMask = multiPawnAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn);
-        const relevantKnightsMask = singleKnightAttacks(square) & self.pieceMask(Piece.Knight);
-        const relevantKingsMask = singleKingAttacks(square) & self.pieceMask(Piece.King);
+        const relevantPawnsMask = pawnsAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn);
+        const relevantKnightsMask = knightAttacks(square) & self.pieceMask(Piece.Knight);
+        const relevantKingsMask = kingAttacks(square) & self.pieceMask(Piece.King);
 
         if ((relevantPawnsMask | relevantKnightsMask | relevantKingsMask) & attackers != 0) {
             return true;
@@ -185,9 +185,9 @@ pub const Board = struct {
         const occupied = self.occupiedMask();
         const attackers = self.colorMask(byColor);
 
-        const relevantPawnsMask = multiPawnAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn);
-        const relevantKnightsMask = multiKnightAttacks(mask_) & self.pieceMask(Piece.Knight);
-        const relevantKingsMask = multiKingAttacks(mask_) & self.pieceMask(Piece.King);
+        const relevantPawnsMask = pawnsAttacks(mask_, byColor.other()) & self.pieceMask(Piece.Pawn);
+        const relevantKnightsMask = knightsAttacks(mask_) & self.pieceMask(Piece.Knight);
+        const relevantKingsMask = kingsAttacks(mask_) & self.pieceMask(Piece.King);
 
         if ((relevantPawnsMask | relevantKnightsMask | relevantKingsMask) & attackers != 0) {
             return true;

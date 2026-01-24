@@ -1,4 +1,5 @@
 const Bitboard = @import("./mod.zig").Bitboard;
+const Color = @import("./mod.zig").Color;
 const masks = @import("./mod.zig").masks;
 
 pub const Rank = enum(u3) {
@@ -49,6 +50,17 @@ pub const Rank = enum(u3) {
     pub fn downN(self: Rank, n: u3) !Rank {
         if (n > Rank.One.int() - self.int()) return error.InvalidRank;
         return Rank.fromInt(self.int() + n);
+    }
+
+    pub fn reflected(self: Rank) Rank {
+        return Rank.fromInt(Rank.One.int() - self.int());
+    }
+
+    pub fn fromPerspective(self: Rank, c: Color) Rank {
+        return switch (c) {
+            .White => self,
+            .Black => self.reflected(),
+        };
     }
 };
 

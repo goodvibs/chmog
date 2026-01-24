@@ -1,8 +1,8 @@
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
 const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
-const multiKnightAttacks = @import("./mod.zig").manual.multiKnightAttacks;
-const multiKingAttacks = @import("./mod.zig").manual.multiKingAttacks;
+const knightsAttacks = @import("./mod.zig").manual.knightsAttacks;
+const kingsAttacks = @import("./mod.zig").manual.kingsAttacks;
 
 fn singlePieceAttacksFromMulti(comptime multiPieceAttacks: fn (Bitboard) Bitboard) fn ([1]Square) Bitboard {
     return struct {
@@ -12,31 +12,31 @@ fn singlePieceAttacksFromMulti(comptime multiPieceAttacks: fn (Bitboard) Bitboar
     }.singlePieceAttacks;
 }
 
-const SINGLE_KNIGHT_ATTACKS_LOOKUP = SquareToBitboard.init(singlePieceAttacksFromMulti(multiKnightAttacks));
-const SINGLE_KING_ATTACKS_LOOKUP = SquareToBitboard.init(singlePieceAttacksFromMulti(multiKingAttacks));
+const SINGLE_KNIGHT_ATTACKS_LOOKUP = SquareToBitboard.init(singlePieceAttacksFromMulti(knightsAttacks));
+const SINGLE_KING_ATTACKS_LOOKUP = SquareToBitboard.init(singlePieceAttacksFromMulti(kingsAttacks));
 
-pub fn singleKnightAttacks(from: Square) Bitboard {
+pub fn knightAttacks(from: Square) Bitboard {
     return SINGLE_KNIGHT_ATTACKS_LOOKUP.get([1]Square{from});
 }
 
-pub fn singleKingAttacks(from: Square) Bitboard {
+pub fn kingAttacks(from: Square) Bitboard {
     return SINGLE_KING_ATTACKS_LOOKUP.get([1]Square{from});
 }
 
 const testing = @import("std").testing;
 
-test "singleKnightAttacks" {
+test "knightAttacks" {
     for (0..64) |i| {
         const square = Square.fromInt(@as(u6, @intCast(i)));
-        const expected = multiKnightAttacks(square.mask());
-        try testing.expectEqual(expected, singleKnightAttacks(square));
+        const expected = knightsAttacks(square.mask());
+        try testing.expectEqual(expected, knightAttacks(square));
     }
 }
 
-test "singleKingAttacks" {
+test "kingAttacks" {
     for (0..64) |i| {
         const square = Square.fromInt(@as(u6, @intCast(i)));
-        const expected = multiKingAttacks(square.mask());
-        try testing.expectEqual(expected, singleKingAttacks(square));
+        const expected = kingsAttacks(square.mask());
+        try testing.expectEqual(expected, kingAttacks(square));
     }
 }
