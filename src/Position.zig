@@ -65,7 +65,7 @@ pub const Position = struct {
         return !self.board.isColorInCheck(self.sideToMove.other());
     }
 
-    pub fn addAllPseudoLegalMoves(self: *const Position, moves_: [*]Move) [*]Move {
+    pub fn addAllMoves(self: *const Position, moves_: [*]Move) [*]Move {
         var moves = moves_;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
 
@@ -77,12 +77,32 @@ pub const Position = struct {
         const orthogonalPieces = rooks | queens;
         const kings = self.board.pieceMask(Piece.King) & currentSidePieces;
 
-        moves = self.addPseudoLegalPawnMoves(true, ~@as(Bitboard, 0), moves);
-        moves = self.addPseudoLegalNonPawnPieceNormalMoves(Piece.Knight, knights, moves);
-        moves = self.addPseudoLegalNonPawnPieceNormalMoves(Piece.Bishop, diagonalPieces, moves);
-        moves = self.addPseudoLegalNonPawnPieceNormalMoves(Piece.Rook, orthogonalPieces, moves);
-        moves = self.addPseudoLegalNonPawnPieceNormalMoves(Piece.King, kings, moves);
-        moves = self.addPseudoLegalCastlingMoves(moves);
+        var isInDoubleCheck = false;
+        const allowedDests: Bitboard = if (self.currentContext.checkers == 0) ~@as(Bitboard, 0) else blk: {
+            const numCheckers = @popCount(self.currentContext.checkers);
+            if (numCheckers == 1) {
+                const king = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+                const checker = Square.fromMask(self.currentContext.checkers) catch unreachable;
+                const blockOrCheckMask = between(checker, king);
+
+                assert(blockOrCheckMask & king.mask() == 0);
+                assert(blockOrCheckMask & checker.mask() != 0);
+
+                break :blk blockOrCheckMask;
+            } else {
+                isInDoubleCheck = true;
+                break :blk 0;
+            }
+        };
+        if (!isInDoubleCheck) {
+            moves = self.addPseudoLegalPawnMoves(true, allowedDests, moves);
+            moves = self.addPseudoLegalMovesFromAttacks(knightAttacks, knights, allowedDests, moves);
+            moves = self.addPseudoLegalMovesFromAttacks(slidingBishopAttacks, diagonalPieces, allowedDests, moves);
+            moves = self.addPseudoLegalMovesFromAttacks(slidingRookAttacks, orthogonalPieces, allowedDests, moves);
+            moves = self.addPseudoLegalCastlingMoves(moves);
+        }
+
+        moves = self.addPseudoLegalMovesFromAttacks(kingAttacks, kings, allowedDests, moves);
 
         return moves;
     }
@@ -91,16 +111,19 @@ pub const Position = struct {
         self: *const Position,
         pieceAttacks: anytype,
         from: Bitboard,
-        moves: [*]Move,
+        allowedDests: Bitboard,
+        moves_: [*]Move,
     ) [*]Move {
+        var moves = moves_;
+
         const occupiedMask = self.board.occupiedMask();
-        const currentSidePieces = self.board.colorMask(self.sideToMove);
+        const attacksFilter = allowedDests & ~self.board.colorMask(self.sideToMove);
 
         var sourceMasksIter = iterSetBits(from);
         while (sourceMasksIter.next()) |sourceMask| {
             const source = Square.fromMask(sourceMask) catch unreachable;
 
-            const attacks: Bitboard = comptime blk: {
+            const attacks: Bitboard = blk: {
                 const T = @TypeOf(pieceAttacks);
                 if (T == fn (Square) Bitboard) break :blk pieceAttacks(source);
                 if (T == fn (Square, Bitboard) Bitboard) break :blk pieceAttacks(source, occupiedMask);
@@ -108,33 +131,7 @@ pub const Position = struct {
                 @compileError("pieceAttacks must be fn(Square) Bitboard or fn(Square, Bitboard) Bitboard");
             };
 
-            const filteredAttacks = attacks & ~currentSidePieces;
-
-            moves = splatMoves(source, filteredAttacks, moves);
-        }
-        return moves;
-    }
-
-    fn addPseudoLegalNonPawnPieceNormalMoves(self: *const Position, by: Piece, from: Bitboard, moves_: [*]Move) [*]Move {
-        var moves = moves_;
-        const occupiedMask = self.board.occupiedMask();
-        const currentSidePieces = self.board.colorMask(self.sideToMove);
-
-        var sourceMasksIter = iterSetBits(from);
-        while (sourceMasksIter.next()) |sourceMask| {
-            const source = Square.fromMask(sourceMask) catch unreachable;
-
-            const attacks: Bitboard = switch (by) {
-                Piece.Knight => knightAttacks(source),
-                Piece.Bishop => slidingBishopAttacks(source, occupiedMask),
-                Piece.Rook => slidingRookAttacks(source, occupiedMask),
-                Piece.Queen => slidingQueenAttacks(source, occupiedMask),
-                Piece.King => kingAttacks(source),
-                else => unreachable,
-            };
-
-            const filteredAttacks = attacks & ~currentSidePieces;
-            moves = splatMoves(source, filteredAttacks, moves);
+            moves = splatMoves(source, attacks & attacksFilter, moves);
         }
         return moves;
     }
@@ -243,18 +240,6 @@ pub const Position = struct {
             }
 
             return true;
-        }
-    }
-
-    fn addLegalCastlingMoves(self: *const Position, comptime allocator: std.mem.Allocator, moves: *ArrayList(Move)) !void {
-        const castlingRights = self.currentContext.castlingRights;
-
-        if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingImpeded() and !self.kingsideCastlingInCheck()) {
-            try moves.append(allocator, Move.kingsideCastling(self.sideToMove));
-        }
-
-        if (castlingRights.queensideForColor(self.sideToMove) and !self.queensideCastlingImpeded() and !self.queensideCastlingInCheck()) {
-            try moves.append(allocator, Move.queensideCastling(self.sideToMove));
         }
     }
 
