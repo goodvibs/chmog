@@ -20,7 +20,6 @@ const pawnsAttacksRight = @import("./mod.zig").attacks.pawnsAttacksRight;
 const knightAttacks = @import("./mod.zig").attacks.knightAttacks;
 const slidingBishopAttacks = @import("./mod.zig").attacks.slidingBishopAttacks;
 const slidingRookAttacks = @import("./mod.zig").attacks.slidingRookAttacks;
-const slidingQueenAttacks = @import("./mod.zig").attacks.slidingQueenAttacks;
 const kingAttacks = @import("./mod.zig").attacks.kingAttacks;
 const pawnsPushes = @import("./mod.zig").attacks.pawnsPushes;
 const edgeToEdge = @import("./mod.zig").utils.edgeToEdge;
@@ -65,8 +64,8 @@ pub const Position = struct {
         return !self.board.isColorInCheck(self.sideToMove.other());
     }
 
-    pub fn addAllMoves(self: *const Position, moves_: [*]Move) [*]Move {
-        var moves = moves_;
+    pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
+        var nextMovesPtr = moves;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
 
         const knights = self.board.pieceMask(Piece.Knight) & currentSidePieces;
@@ -78,8 +77,10 @@ pub const Position = struct {
         const kings = self.board.pieceMask(Piece.King) & currentSidePieces;
 
         var isInDoubleCheck = false;
+        const numCheckers = @popCount(self.currentContext.checkers);
+        assert(numCheckers <= 2);
+
         const allowedDests: Bitboard = if (self.currentContext.checkers == 0) ~@as(Bitboard, 0) else blk: {
-            const numCheckers = @popCount(self.currentContext.checkers);
             if (numCheckers == 1) {
                 const king = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
                 const checker = Square.fromMask(self.currentContext.checkers) catch unreachable;
@@ -95,26 +96,77 @@ pub const Position = struct {
             }
         };
         if (!isInDoubleCheck) {
-            moves = self.addPseudoLegalPawnMoves(true, allowedDests, moves);
-            moves = self.addPseudoLegalMovesFromAttacks(knightAttacks, knights, allowedDests, moves);
-            moves = self.addPseudoLegalMovesFromAttacks(slidingBishopAttacks, diagonalPieces, allowedDests, moves);
-            moves = self.addPseudoLegalMovesFromAttacks(slidingRookAttacks, orthogonalPieces, allowedDests, moves);
-            moves = self.addPseudoLegalCastlingMoves(moves);
+            nextMovesPtr = self.genPseudoLegalPawnMoves(true, allowedDests, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(knightAttacks, knights, allowedDests, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingBishopAttacks, diagonalPieces, allowedDests, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingRookAttacks, orthogonalPieces, allowedDests, nextMovesPtr);
+
+            if (self.currentContext.checkers == 0) {
+                nextMovesPtr = self.genPseudoLegalCastlingMoves(nextMovesPtr);
+            }
         }
 
-        moves = self.addPseudoLegalMovesFromAttacks(kingAttacks, kings, allowedDests, moves);
+        nextMovesPtr = self.genPseudoLegalMovesFromAttacks(kingAttacks, kings, ~@as(Bitboard, 0), nextMovesPtr);
 
-        return moves;
+        if (nextMovesPtr == moves) return moves;
+
+        var lastMovePtr = nextMovesPtr - 1;
+        var movesPtr = lastMovePtr;
+        while (@intFromPtr(movesPtr) >= @intFromPtr(moves)) : (movesPtr -= 1) {
+            if (!self.isPseudoLegalMoveLegal(movesPtr[0])) {
+                movesPtr[0] = lastMovePtr[0];
+                lastMovePtr -= 1;
+            }
+        }
+
+        return lastMovePtr + 1;
     }
 
-    pub fn addPseudoLegalMovesFromAttacks(
+    pub fn isPseudoLegalMoveLegal(self: *const Position, move: Move) bool {
+        if (move.flag == MoveFlag.EnPassant) return self.isPseudoLegalEnPassantLegal(move);
+        if (move.flag == MoveFlag.Castling) return self.isPseudoLegalCastlingLegal(move);
+        if (self.board.pieceMask(Piece.King) & move.from.mask() != 0) return self.isPseudoLegalKingMoveLegal(move);
+
+        return (self.currentContext.pinned & self.board.colorMask(self.sideToMove) & move.from.mask() == 0 or
+            edgeToEdge(move.from, move.to) & self.board.mask(Piece.King, self.sideToMove) != 0);
+    }
+
+    pub fn isPseudoLegalEnPassantLegal(self: *const Position, move: Move) bool {
+        assert(move.flag == MoveFlag.EnPassant);
+
+        const enPassantCaptureSquare = Square.fromRankAndFile(enPassantCaptureRank(self.sideToMove), move.to.file());
+        const occupiedMaskAfterMove = self.board.occupiedMask() ^ move.from.mask() ^ move.to.mask() ^ enPassantCaptureSquare.mask();
+        const opponentPieces = self.board.colorMask(self.sideToMove.other());
+        const queens = self.board.pieceMask(Piece.Queen);
+        const opponentDiagonalAttackers = (self.board.pieceMask(Piece.Bishop) | queens) & opponentPieces;
+        const opponentOrthogonalAttackers = (self.board.pieceMask(Piece.Rook) | queens) & opponentPieces;
+        const currentSideKing = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+
+        return slidingBishopAttacks(currentSideKing, occupiedMaskAfterMove) & opponentDiagonalAttackers == 0 and
+            slidingRookAttacks(currentSideKing, occupiedMaskAfterMove) & opponentOrthogonalAttackers == 0;
+    }
+
+    pub fn isPseudoLegalCastlingLegal(self: *const Position, move: Move) bool {
+        assert(move.flag == MoveFlag.Castling);
+
+        if (move.to.int() > move.from.int()) return !self.kingsideCastlingInCheck();
+        return !self.queensideCastlingInCheck();
+    }
+
+    pub fn isPseudoLegalKingMoveLegal(self: *const Position, move: Move) bool {
+        assert(move.from.mask() == self.board.mask(Piece.King, self.sideToMove));
+
+        return self.isKingMoveSafe(move.from, move.to);
+    }
+
+    pub fn genPseudoLegalMovesFromAttacks(
         self: *const Position,
         pieceAttacks: anytype,
         from: Bitboard,
         allowedDests: Bitboard,
-        moves_: [*]Move,
+        moves: [*]Move,
     ) [*]Move {
-        var moves = moves_;
+        var nextMovesPtr = moves;
 
         const occupiedMask = self.board.occupiedMask();
         const attacksFilter = allowedDests & ~self.board.colorMask(self.sideToMove);
@@ -131,13 +183,13 @@ pub const Position = struct {
                 @compileError("pieceAttacks must be fn(Square) Bitboard or fn(Square, Bitboard) Bitboard");
             };
 
-            moves = splatMoves(source, attacks & attacksFilter, moves);
+            nextMovesPtr = splatMoves(source, attacks & attacksFilter, nextMovesPtr);
         }
-        return moves;
+        return nextMovesPtr;
     }
 
-    fn addPseudoLegalPawnMoves(self: *const Position, comptime includeEnPassant: bool, allowedDests: Bitboard, moves_: [*]Move) [*]Move {
-        var moves = moves_;
+    fn genPseudoLegalPawnMoves(self: *const Position, comptime includeEnPassant: bool, allowedDests: Bitboard, moves: [*]Move) [*]Move {
+        var nextMovesPtr = moves;
         const occupied = self.board.occupiedMask();
         const enemies = self.board.colorMask(self.sideToMove.other());
 
@@ -165,19 +217,19 @@ pub const Position = struct {
         const capturesLeft = pawnsAttacksLeft(pawns, self.sideToMove) & enemies & allowedDests;
         const capturesRight = pawnsAttacksRight(pawns, self.sideToMove) & enemies & allowedDests;
 
-        moves = splatPawnMoves(false, down, singlePushes, moves);
-        moves = splatPawnMoves(false, down * 2, doublePushes, moves);
+        nextMovesPtr = splatPawnMoves(false, down, singlePushes & ~promotionRankMask, nextMovesPtr);
+        nextMovesPtr = splatPawnMoves(false, down * 2, doublePushes, nextMovesPtr);
 
-        moves = splatPawnMoves(true, downRight, capturesLeft & promotionRankMask, moves);
-        moves = splatPawnMoves(true, downLeft, capturesRight & promotionRankMask, moves);
-        moves = splatPawnMoves(true, down, singlePushes & promotionRankMask, moves);
+        nextMovesPtr = splatPawnMoves(true, downRight, capturesLeft & promotionRankMask, nextMovesPtr);
+        nextMovesPtr = splatPawnMoves(true, downLeft, capturesRight & promotionRankMask, nextMovesPtr);
+        nextMovesPtr = splatPawnMoves(true, down, singlePushes & promotionRankMask, nextMovesPtr);
 
-        moves = splatPawnMoves(false, downRight, capturesLeft & ~promotionRankMask, moves);
-        moves = splatPawnMoves(false, downLeft, capturesRight & ~promotionRankMask, moves);
+        nextMovesPtr = splatPawnMoves(false, downRight, capturesLeft & ~promotionRankMask, nextMovesPtr);
+        nextMovesPtr = splatPawnMoves(false, downLeft, capturesRight & ~promotionRankMask, nextMovesPtr);
 
         if (includeEnPassant) {
             if (self.currentContext.doublePawnPushFile) |file| {
-                const captureRank = enPassantCaptureRank(self.sideToMove);
+                const captureRank = enPassantDestRank(self.sideToMove);
                 const captureMask = captureRank.mask() & file.mask();
                 const captureSquare = Square.fromMask(captureMask) catch unreachable;
                 var sourcesMask = pawnsAttacks(captureMask, self.sideToMove.other()) & self.board.colorMask(self.sideToMove);
@@ -186,32 +238,32 @@ pub const Position = struct {
                         const sourceMask = lsbMask(sourcesMask);
                         const sourceSquare = Square.fromMask(sourceMask) catch unreachable;
                         sourcesMask ^= sourceMask;
-                        moves[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant);
-                        moves += 1;
+                        nextMovesPtr[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant);
+                        nextMovesPtr += 1;
                     }
                 }
             }
         }
 
-        return moves;
+        return nextMovesPtr;
     }
 
-    fn addPseudoLegalCastlingMoves(self: *const Position, moves_: [*]Move) [*]Move {
-        var moves = moves_;
+    fn genPseudoLegalCastlingMoves(self: *const Position, moves: [*]Move) [*]Move {
+        var nextMovesPtr = moves;
 
         const castlingRights = self.currentContext.castlingRights;
 
         if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingImpeded()) {
-            moves[0] = Move.kingsideCastling(self.sideToMove);
-            moves += 1;
+            nextMovesPtr[0] = Move.kingsideCastling(self.sideToMove);
+            nextMovesPtr += 1;
         }
 
         if (castlingRights.queensideForColor(self.sideToMove) and !self.queensideCastlingImpeded()) {
-            moves[0] = Move.queensideCastling(self.sideToMove);
-            moves += 1;
+            nextMovesPtr[0] = Move.queensideCastling(self.sideToMove);
+            nextMovesPtr += 1;
         }
 
-        return moves;
+        return nextMovesPtr;
     }
 
     fn isKingMoveSafe(self: *const Position, source: Square, dest: Square) bool {
@@ -299,15 +351,22 @@ fn enPassantSourceRank(forColor: Color) Rank {
     };
 }
 
-fn enPassantCaptureRank(forColor: Color) Rank {
+fn enPassantDestRank(forColor: Color) Rank {
     return switch (forColor) {
         .White => Rank.Six,
         .Black => Rank.Three,
     };
 }
 
-fn splatPawnMoves(comptime arePromotions: bool, fromOffset: i7, to: Bitboard, moves_: [*]Move) [*]Move {
-    var moves = moves_;
+fn enPassantCaptureRank(forColor: Color) Rank {
+    return switch (forColor) {
+        .White => Rank.Five,
+        .Black => Rank.Four,
+    };
+}
+
+fn splatPawnMoves(comptime arePromotions: bool, fromOffset: i7, to: Bitboard, moves: [*]Move) [*]Move {
+    var nextMovesPtr = moves;
     var iter = iterSetBits(to);
     while (iter.next()) |destMask| {
         const dest = Square.fromMask(destMask) catch unreachable;
@@ -317,14 +376,14 @@ fn splatPawnMoves(comptime arePromotions: bool, fromOffset: i7, to: Bitboard, mo
         assert(fromIntUnsigned <= ~@as(u6, 0));
         const from = Square.fromInt(@truncate(fromIntUnsigned));
         if (arePromotions) {
-            moves[0..4].* = generatePawnPromotions(from, dest);
-            moves += 4;
+            nextMovesPtr[0..4].* = generatePawnPromotions(from, dest);
+            nextMovesPtr += 4;
         } else {
-            moves[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal);
-            moves += 1;
+            nextMovesPtr[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal);
+            nextMovesPtr += 1;
         }
     }
-    return moves;
+    return nextMovesPtr;
 }
 
 fn generatePawnPromotions(from: Square, to: Square) [4]Move {
@@ -336,13 +395,13 @@ fn generatePawnPromotions(from: Square, to: Square) [4]Move {
     };
 }
 
-fn splatMoves(from: Square, to: Bitboard, moves_: [*]Move) [*]Move {
-    var moves = moves_;
+fn splatMoves(from: Square, to: Bitboard, moves: [*]Move) [*]Move {
+    var nextMovesPtr = moves;
     var iter = iterSetBits(to);
     while (iter.next()) |destMask| {
         const dest = Square.fromMask(destMask) catch unreachable;
-        moves[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal);
-        moves += 1;
+        nextMovesPtr[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal);
+        nextMovesPtr += 1;
     }
-    return moves;
+    return nextMovesPtr;
 }
