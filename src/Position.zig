@@ -4,8 +4,10 @@ const ArrayList = @import("std").ArrayList;
 const Move = @import("./mod.zig").Move;
 const MoveFlag = @import("./mod.zig").MoveFlag;
 const Bitboard = @import("./mod.zig").Bitboard;
+const CastlingRights = @import("./mod.zig").CastlingRights;
 const Board = @import("./mod.zig").Board;
 const Rank = @import("./mod.zig").Rank;
+const File = @import("./mod.zig").File;
 const Piece = @import("./mod.zig").Piece;
 const PromotionPiece = @import("./mod.zig").PromotionPiece;
 const Square = @import("./mod.zig").Square;
@@ -46,6 +48,45 @@ pub const Position = struct {
         };
     }
 
+    pub fn validateCurrentContext(self: *const Position) void {
+        self.currentContext.validate();
+
+        const opponentPieces = self.board.colorMask(self.sideToMove.other());
+
+        assert(opponentPieces & self.currentContext.checkers == self.currentContext.checkers);
+        assert(self.board.occupiedMask() & self.currentContext.pinners == self.currentContext.pinners);
+        // assert(self.currentContext.hash == self.computeHash();
+        if (self.currentContext.castlingRights.whiteKingside) {
+            assert(self.board.pieceAtSquare(Square.H1) == Piece.Rook);
+            assert(self.board.pieceAtSquare(Square.E1) == Piece.King);
+        }
+        if (self.currentContext.castlingRights.whiteQueenside) {
+            assert(self.board.pieceAtSquare(Square.A1) == Piece.Rook);
+            assert(self.board.pieceAtSquare(Square.E1) == Piece.King);
+        }
+        if (self.currentContext.castlingRights.blackKingside) {
+            assert(self.board.pieceAtSquare(Square.H8) == Piece.Rook);
+            assert(self.board.pieceAtSquare(Square.E8) == Piece.King);
+        }
+        if (self.currentContext.castlingRights.whiteQueenside) {
+            assert(self.board.pieceAtSquare(Square.A8) == Piece.Rook);
+            assert(self.board.pieceAtSquare(Square.E8) == Piece.King);
+        }
+        assert(self.currentContext.halfmoveClock <= self.halfmove);
+        assert(@abs(self.currentContext.repetition) <= self.halfmove);
+    }
+
+    pub fn validate(self: *const Position) void {
+        self.board.validate();
+        self.currentContext.validate();
+        self.validateCurrentContext();
+        for (self.previousContexts.items) |context| {
+            context.validate();
+        }
+        assert(self.previousContexts.len >= self.halfmove);
+        assert(self.sideToMove.isValidForHalfmove(self.halfmove));
+    }
+
     pub fn doHalfmoveAndSideToMoveAgree(self: *const Position) bool {
         const isEven = self.halfmove % 2 == 0;
         const isWhite = self.sideToMove == Color.White;
@@ -62,6 +103,74 @@ pub const Position = struct {
 
     pub fn isNotInIllegalCheck(self: *const Position) bool {
         return !self.board.isColorInCheck(self.sideToMove.other());
+    }
+
+    pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) !void {
+        try self.previousContexts.append(allocator, self.currentContext);
+
+        self.currentContext.doublePawnPushFile = null;
+        self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
+        self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
+        switch (move.flag) {
+            .Castling => {
+                assert(self.board.mask(Piece.King, self.sideToMove) == self.from.mask());
+                self.currentContext.capturedPiece = null;
+                self.currentContext.halfmoveClock = 0;
+                const isKingSide = isKingSideCastling(move);
+
+                const kingMoveMask = move.from.mask() | move.to.mask();
+
+                const colorlessRookMoveMask = if (isKingSide) File.H.mask() | File.F.mask() else File.A.mask() | File.D.mask();
+                const rankMask = move.from.rank.mask();
+                const rookMoveMask = colorlessRookMoveMask & rankMask;
+
+                self.board.xorPieceMask(Piece.King, kingMoveMask);
+                self.board.xorPieceMask(Piece.Rook, rookMoveMask);
+                self.board.xorColorMask(self.sideToMove, rookMoveMask);
+                self.board.xorOccupiedMask(rookMoveMask);
+                self.currentContext.castlingRights.toggleMask(CastlingRights.colorMask(self.sideToMove));
+            },
+            .EnPassant => {
+                self.currentContext.capturedPiece = Piece.Pawn;
+                self.currentContext.halfmoveClock = 0;
+                const captureSquare = Square.fromRankAndFile(enPassantCaptureRank(self.sideToMove), move.to.file());
+                const captureMask = captureSquare.mask();
+                self.board.xorPieceMask(Piece.Pawn, captureMask);
+                self.board.xorColorMask(self.sideToMove.other(), captureMask);
+                self.board.xorOccupiedMask(captureMask);
+            },
+            else => {
+                self.currentContext.capturedPiece = self.board.pieceAtSquare(move.to);
+                if (self.currentContext.capturedPiece) |capturedPiece| {
+                    self.currentContext.halfmoveClock = 0;
+                    self.board.xorPieceMask(capturedPiece, move.to.mask());
+                    self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
+                    self.board.xorOccupiedMask(move.to.mask());
+                    // if (move.to.mask() & self.currentContext.chec
+                }
+                if (move.flag == MoveFlag.Promotion) {
+                    const promotion = move.promotion.piece();
+                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
+                    self.board.xorPieceMask(promotion, move.to.mask());
+                } else {
+                    const movedPiece = self.board.pieceAtSquare(move.from);
+                    switch (movedPiece) {
+                        .Pawn => {
+                            self.currentContext.halfmoveClock = 0;
+                            if (distance(move.from.int(), move.to.int() == 2)) {
+                                self.currentContext.doublePawnPushFile = move.from.file();
+                            }
+                        },
+                        .Bishop => {},
+                        .Rook => {},
+                        .Queen => {},
+                        .King => {
+                            self.currentContext.castlingRights = CastlingRights.fromMask(@as(u4, 0));
+                        },
+                    }
+                }
+            },
+        }
     }
 
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
@@ -149,8 +258,8 @@ pub const Position = struct {
     pub fn isPseudoLegalCastlingLegal(self: *const Position, move: Move) bool {
         assert(move.flag == MoveFlag.Castling);
 
-        if (move.to.int() > move.from.int()) return !self.kingsideCastlingInCheck();
-        return !self.queensideCastlingInCheck();
+        if (isKingSideCastling(move)) return !self.kingSideCastlingInCheck();
+        return !self.queenSideCastlingInCheck();
     }
 
     pub fn isPseudoLegalKingMoveLegal(self: *const Position, move: Move) bool {
@@ -253,12 +362,12 @@ pub const Position = struct {
 
         const castlingRights = self.currentContext.castlingRights;
 
-        if (castlingRights.kingsideForColor(self.sideToMove) and !self.kingsideCastlingImpeded()) {
+        if (castlingRights.kingSideForColor(self.sideToMove) and !self.kingSideCastlingImpeded()) {
             nextMovesPtr[0] = Move.kingsideCastling(self.sideToMove);
             nextMovesPtr += 1;
         }
 
-        if (castlingRights.queensideForColor(self.sideToMove) and !self.queensideCastlingImpeded()) {
+        if (castlingRights.queenSideForColor(self.sideToMove) and !self.queenSideCastlingImpeded()) {
             nextMovesPtr[0] = Move.queensideCastling(self.sideToMove);
             nextMovesPtr += 1;
         }
@@ -299,45 +408,53 @@ pub const Position = struct {
         return true;
     }
 
-    fn kingsideCastlingImpeded(self: *const Position) bool {
-        return self.board.occupiedMask() & kingsideCastlingGapMask(self.sideToMove) != 0;
+    fn kingSideCastlingImpeded(self: *const Position) bool {
+        return self.board.occupiedMask() & kingSideCastlingGapMask(self.sideToMove) != 0;
     }
 
-    fn queensideCastlingImpeded(self: *const Position) bool {
-        return self.board.occupiedMask() & queensideCastlingGapMask(self.sideToMove) != 0;
+    fn queenSideCastlingImpeded(self: *const Position) bool {
+        return self.board.occupiedMask() & queenSideCastlingGapMask(self.sideToMove) != 0;
     }
 
-    fn kingsideCastlingInCheck(self: *const Position) bool {
-        return self.board.isMaskAttacked(kingsideCastlingCheckMask(self.sideToMove), self.sideToMove.other());
+    fn kingSideCastlingInCheck(self: *const Position) bool {
+        return self.board.isMaskAttacked(kingSideCastlingCheckMask(self.sideToMove), self.sideToMove.other());
     }
 
-    fn queensideCastlingInCheck(self: *const Position) bool {
-        return self.board.isMaskAttacked(queensideCastlingCheckMask(self.sideToMove), self.sideToMove.other());
+    fn queenSideCastlingInCheck(self: *const Position) bool {
+        return self.board.isMaskAttacked(queenSideCastlingCheckMask(self.sideToMove), self.sideToMove.other());
     }
 };
 
-fn kingsideCastlingGapMask(forColor: Color) Bitboard {
+fn isKingSideCastling(move: Move) bool {
+    assert(move.flag == MoveFlag.Castling);
+    const result = move.to.int() > move.from.int();
+    assert(result == ((move.from == Square.E1 and move.to == Square.H1) or (move.from == Square.E8 and move.to == Square.H8)));
+    assert(result != ((move.from == Square.E1 and move.to == Square.A1) or (move.from == Square.E8 and move.to == Square.A8)));
+    return result;
+}
+
+fn kingSideCastlingGapMask(forColor: Color) Bitboard {
     return switch (forColor) {
         .White => Square.F1.mask() | Square.G1.mask(),
         .Black => Square.F8.mask() | Square.G8.mask(),
     };
 }
 
-fn queensideCastlingGapMask(forColor: Color) Bitboard {
+fn queenSideCastlingGapMask(forColor: Color) Bitboard {
     return switch (forColor) {
         .White => Square.D1.mask() | Square.C1.mask() | Square.B1.mask(),
         .Black => Square.D8.mask() | Square.C8.mask() | Square.B8.mask(),
     };
 }
 
-fn kingsideCastlingCheckMask(forColor: Color) Bitboard {
+fn kingSideCastlingCheckMask(forColor: Color) Bitboard {
     return switch (forColor) {
         .White => Square.F1.mask() | Square.G1.mask(),
         .Black => Square.F8.mask() | Square.G8.mask(),
     };
 }
 
-fn queensideCastlingCheckMask(forColor: Color) Bitboard {
+fn queenSideCastlingCheckMask(forColor: Color) Bitboard {
     return switch (forColor) {
         .White => Square.D1.mask() | Square.C1.mask(),
         .Black => Square.D8.mask() | Square.C8.mask(),
@@ -404,4 +521,8 @@ fn splatMoves(from: Square, to: Bitboard, moves: [*]Move) [*]Move {
         nextMovesPtr += 1;
     }
     return nextMovesPtr;
+}
+
+fn distance(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return @max(a, b) - @min(a, b);
 }
