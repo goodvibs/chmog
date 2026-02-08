@@ -6,23 +6,19 @@ pub const CastlingRights = packed struct {
     blackKingside: bool,
     blackQueenside: bool,
 
-    pub fn none() CastlingRights {
-        return CastlingRights{
-            .whiteKingside = false,
-            .whiteQueenside = false,
-            .blackKingside = false,
-            .blackQueenside = false,
-        };
-    }
+    ALL: CastlingRights = CastlingRights{
+        .whiteKingside = true,
+        .whiteQueenside = true,
+        .blackKingside = true,
+        .blackQueenside = true,
+    },
 
-    pub fn all() CastlingRights {
-        return CastlingRights{
-            .whiteKingside = true,
-            .whiteQueenside = true,
-            .blackKingside = true,
-            .blackQueenside = true,
-        };
-    }
+    NONE: CastlingRights = CastlingRights{
+        .whiteKingside = false,
+        .whiteQueenside = false,
+        .blackKingside = false,
+        .blackQueenside = false,
+    },
 
     pub fn mask(self: CastlingRights) u4 {
         return @bitCast(self);
@@ -37,7 +33,7 @@ pub const CastlingRights = packed struct {
     }
 
     pub fn sideMask(isKingSide: bool) u4 {
-        return @as(u4, 0b0101) << (2 * @as(u2, isKingSide));
+        return @as(u4, 0b0101) << @as(u2, @intFromBool(isKingSide));
     }
 
     pub fn anyInMask(self: CastlingRights, mask_: u4) bool {
@@ -45,6 +41,10 @@ pub const CastlingRights = packed struct {
     }
 
     pub fn toggleMask(self: *CastlingRights, mask_: u4) void {
-        self.* = CastlingRights.fromMask(*self ^ mask_);
+        self.* = CastlingRights.fromMask(self.mask() ^ mask_);
+    }
+
+    pub fn query(self: CastlingRights, isKingSide: bool, color: Color) bool {
+        return self.anyInMask(CastlingRights.sideMask(isKingSide) & CastlingRights.colorMask(color));
     }
 };
