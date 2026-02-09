@@ -67,10 +67,10 @@ pub const Board = struct {
         return pieceMasksUnion == self.occupiedMask();
     }
 
-    pub fn isValid(self: *const Board) bool {
-        return self.doColorMasksUnionToOccupiedMask() and
-            self.doColorMasksNotConflict() and
-            self.arePieceMasksValid();
+    pub fn validate(self: *const Board) void {
+        assert(self.doColorMasksUnionToOccupiedMask());
+        assert(self.doColorMasksNotConflict());
+        assert(self.arePieceMasksValid());
     }
 
     pub fn hasOneKingPerColor(self: *const Board) bool {
@@ -278,7 +278,7 @@ test "board initial" {
     const board = Board.initial();
     try testing.expect(board.hasOneKingPerColor());
     try testing.expect(board.hasNoPawnsInFirstNorLastRank());
-    try testing.expect(board.isValid());
+    board.validate();
 
     try testing.expect(board.colorMask(Color.White) != 0);
     try testing.expect(board.colorMask(Color.Black) != 0);
