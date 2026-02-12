@@ -40,7 +40,18 @@ pub const Position = struct {
     pub fn initial(allocator: std.mem.Allocator, previousContextsCapacity: usize) !Position {
         return Position{
             .board = Board.initial(),
-            .currentContext = PositionContext.new(),
+            .currentContext = PositionContext{
+                .checkers = 0,
+                .pinners = 0,
+                .checkBlockers = [2]Bitboard{ 0, 0 },
+                .hash = 0,
+                .castlingRights = CastlingRights.all(),
+                .movedPiece = Piece.Null,
+                .capturedPiece = Piece.Null,
+                .doublePawnPushFile = null,
+                .halfmoveClock = 0,
+                .repetition = 0,
+            },
             .previousContexts = try ArrayList(PositionContext).initCapacity(allocator, previousContextsCapacity),
             .halfmove = 0,
             .gameResult = GameResult.None,
@@ -68,7 +79,7 @@ pub const Position = struct {
             assert(self.board.pieceAtSquare(Square.H8) == Piece.Rook);
             assert(self.board.pieceAtSquare(Square.E8) == Piece.King);
         }
-        if (self.currentContext.castlingRights.whiteQueenside) {
+        if (self.currentContext.castlingRights.blackQueenside) {
             assert(self.board.pieceAtSquare(Square.A8) == Piece.Rook);
             assert(self.board.pieceAtSquare(Square.E8) == Piece.King);
         }
@@ -83,8 +94,8 @@ pub const Position = struct {
         for (self.previousContexts.items) |context| {
             context.validate();
         }
-        assert(self.previousContexts.len >= self.halfmove);
-        assert(self.sideToMove.isValidForHalfmove(self.halfmove));
+        assert(self.previousContexts.items.len >= self.halfmove);
+        assert(self.doHalfmoveAndSideToMoveAgree());
     }
 
     pub fn doHalfmoveAndSideToMoveAgree(self: *const Position) bool {
@@ -362,12 +373,12 @@ pub const Position = struct {
 
         const castlingRights = self.currentContext.castlingRights;
 
-        if (castlingRights.kingSideForColor(self.sideToMove) and !self.kingSideCastlingImpeded()) {
+        if (castlingRights.query(true, self.sideToMove) and !self.kingSideCastlingImpeded()) {
             nextMovesPtr[0] = Move.kingsideCastling(self.sideToMove);
             nextMovesPtr += 1;
         }
 
-        if (castlingRights.queenSideForColor(self.sideToMove) and !self.queenSideCastlingImpeded()) {
+        if (castlingRights.query(false, self.sideToMove) and !self.queenSideCastlingImpeded()) {
             nextMovesPtr[0] = Move.queensideCastling(self.sideToMove);
             nextMovesPtr += 1;
         }
