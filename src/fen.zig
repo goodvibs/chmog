@@ -139,9 +139,9 @@ fn parseFenTurn(fenTurn: []const u8) !Color {
 fn parseFenCastling(fenCastling: []const u8) !CastlingRights {
     if (fenCastling.len <= 4) {
         if (fenCastling.len == 1 and fenCastling[0] == '-') {
-            return CastlingRights.none();
+            return CastlingRights.NONE;
         }
-        var res = CastlingRights.none();
+        var res = CastlingRights.NONE;
         for (fenCastling) |char| {
             const old = res.mask();
             switch (char) {
@@ -359,18 +359,18 @@ test "parseFen castling rights" {
     const allCastling = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     var pos1 = try parseFen(allCastling, testing.allocator, 100);
     defer pos1.previousContexts.deinit(testing.allocator);
-    try testing.expect(pos1.currentContext.castlingRights.mask() == CastlingRights.ALL);
+    try testing.expect(pos1.currentContext.castlingRights == CastlingRights.ALL);
 
     const noCastling = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1";
     var pos2 = try parseFen(noCastling, testing.allocator, 100);
     defer pos2.previousContexts.deinit(testing.allocator);
-    try testing.expect(pos2.currentContext.castlingRights.mask() == CastlingRights.NONE);
+    try testing.expect(pos2.currentContext.castlingRights == CastlingRights.NONE);
 
     const whiteOnly = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1";
     var pos3 = try parseFen(whiteOnly, testing.allocator, 100);
     defer pos3.previousContexts.deinit(testing.allocator);
 
-    try testing.expect(pos3.currentContext.castlingRights.mask() == CastlingRights{ .whiteKingside = true, .whiteQueenside = true, .blackKingside = false, .blackQueenside = false });
+    try testing.expect(pos3.currentContext.castlingRights == CastlingRights{ .whiteKingside = true, .whiteQueenside = true, .blackKingside = false, .blackQueenside = false });
 }
 
 test "parseFen en passant" {

@@ -6,19 +6,19 @@ pub const CastlingRights = packed struct {
     blackKingside: bool,
     blackQueenside: bool,
 
-    ALL: CastlingRights = CastlingRights{
+    pub const ALL = CastlingRights{
         .whiteKingside = true,
         .whiteQueenside = true,
         .blackKingside = true,
         .blackQueenside = true,
-    },
+    };
 
-    NONE: CastlingRights = CastlingRights{
+    pub const NONE = CastlingRights{
         .whiteKingside = false,
         .whiteQueenside = false,
         .blackKingside = false,
         .blackQueenside = false,
-    },
+    };
 
     pub fn mask(self: CastlingRights) u4 {
         return @bitCast(self);
