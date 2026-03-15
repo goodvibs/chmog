@@ -28,7 +28,7 @@ pub const PositionContext = struct {
     }
 
     pub fn setCheckBlockersForColor(
-        self: *const PositionContext,
+        self: *PositionContext,
         newBlockers: Bitboard,
         forColor: Color,
     ) void {
@@ -37,12 +37,11 @@ pub const PositionContext = struct {
 
     pub fn validate(self: *const PositionContext) void {
         assert(self.checkers != ~@as(Bitboard, 0));
-        assert(@popCount(self.pinners) < @popCount(self.checkers));
+        assert(@popCount(self.checkers) <= 2);
         assert(self.checkBlockersForColor(Color.White) & self.checkBlockersForColor(Color.Black) == 0);
         // assert(self.hash != 0);
-        assert(self.movedPiece != Piece.King or CastlingRights.mask == @as(u4, 0));
         assert(self.capturedPiece != Piece.King);
-        assert(self.doublePawnPushFile == null or self.capturedPiece == null);
+        assert(self.doublePawnPushFile == null or self.capturedPiece == Piece.Null);
         assert(self.halfmoveClock <= 100);
     }
 };
