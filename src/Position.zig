@@ -119,14 +119,15 @@ pub const Position = struct {
     pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) !void {
         try self.previousContexts.append(allocator, self.currentContext);
 
-        const movedPiece = self.board.pieceAtSquare(move.from);
-        self.currentContext.movedPiece = movedPiece;
-        self.currentContext.doublePawnPushFile = null;
         self.currentContext.halfmoveClock += 1;
+
+        self.currentContext.doublePawnPushFile = null; // Only set below if double pawn push
 
         switch (move.flag) {
             .Castling => {
                 assert(self.board.mask(Piece.King, self.sideToMove) == move.from.mask());
+
+                self.currentContext.movedPiece = Piece.King;
                 self.currentContext.capturedPiece = Piece.Null;
                 self.currentContext.halfmoveClock = 0;
 
@@ -137,11 +138,14 @@ pub const Position = struct {
                 self.board.xorPieceMask(Piece.Rook, rookMoveMask);
                 self.board.xorColorMask(self.sideToMove, kingMoveMask | rookMoveMask);
                 self.board.xorOccupiedMask(kingMoveMask | rookMoveMask);
+
                 self.currentContext.castlingRights.toggleMask(CastlingRights.colorMask(self.sideToMove));
             },
             .EnPassant => {
+                self.currentContext.movedPiece = Piece.Pawn;
                 self.currentContext.capturedPiece = Piece.Pawn;
                 self.currentContext.halfmoveClock = 0;
+
                 const captureSquare = Square.fromRankAndFile(enPassantCaptureRank(self.sideToMove), move.to.file());
                 const captureMask = captureSquare.mask();
 
@@ -151,32 +155,41 @@ pub const Position = struct {
                 self.board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
             },
             else => {
-                // Check for capture before moving
                 self.currentContext.capturedPiece = self.board.pieceAtSquare(move.to);
                 const isCapture = self.currentContext.capturedPiece != Piece.Null;
 
-                if (isCapture) {
-                    self.currentContext.halfmoveClock = 0;
-                    self.board.xorPieceMask(self.currentContext.capturedPiece, move.to.mask());
-                    self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
-                    // Note: occupied mask XOR for to-square will cancel out below
-                }
-
-                if (move.flag == MoveFlag.Promotion) {
-                    const promotion = move.promotion.piece();
-                    self.currentContext.halfmoveClock = 0;
-                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
-                    self.board.xorPieceMask(promotion, move.to.mask());
-                } else {
-                    self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
-                }
-
+                // Current side must move from source to destination no matter what
                 self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
 
                 if (isCapture) {
+                    self.currentContext.halfmoveClock = 0;
+                    // No matter what, opposite side piece at destination square is removed
+                    self.board.xorPieceMask(self.currentContext.capturedPiece, move.to.mask());
+                    self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
+
+                    // Unoccupy source but keep destination occupied
                     self.board.xorOccupiedMask(move.from.mask());
                 } else {
+                    // Unoccupy source and occupy destination
                     self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
+                }
+
+                var movedPiece = undefined;
+
+                if (move.flag == MoveFlag.Promotion) {
+                    movedPiece = Piece.Pawn;
+
+                    // Reset halfmove clock for pawn move
+                    self.currentContext.halfmoveClock = 0;
+                    // Remove pawn from source
+                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
+                    // Put promotion piece at destination
+                    self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
+                } else {
+                    movedPiece = self.board.pieceAtSquare(move.from);
+
+                    // Toggle moved piece at source and destination
+                    self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
                 }
 
                 switch (movedPiece) {
@@ -196,6 +209,8 @@ pub const Position = struct {
 
         self.sideToMove = self.sideToMove.other();
         self.halfmove += 1;
+
+        // TODO: Update checkers, checkBlockers, pinners
     }
 
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
