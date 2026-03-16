@@ -9,7 +9,7 @@ const File = @import("./mod.zig").File;
 pub const PositionContext = struct {
     checkers: Bitboard, // Can have [0, 2] set bits
     pinners: Bitboard, // Includes pieces from both sides
-    checkBlockers: [2]Bitboard,
+    checkBlockers: [2]Bitboard, // check blockers for white, check blockers for black
     hash: Bitboard,
     castlingRights: CastlingRights,
     movedPiece: Piece,
