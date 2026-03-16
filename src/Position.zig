@@ -129,13 +129,9 @@ pub const Position = struct {
                 assert(self.board.mask(Piece.King, self.sideToMove) == move.from.mask());
                 self.currentContext.capturedPiece = Piece.Null;
                 self.currentContext.halfmoveClock = 0;
-                const isKingSide = isKingSideCastling(move);
 
                 const kingMoveMask = move.from.mask() | move.to.mask();
-
-                const colorlessRookMoveMask = if (isKingSide) File.H.mask() | File.F.mask() else File.A.mask() | File.D.mask();
-                const rankMask = move.from.rank().mask();
-                const rookMoveMask = colorlessRookMoveMask & rankMask;
+                const rookMoveMask = castlingRookMoveMask(move);
 
                 self.board.xorPieceMask(Piece.King, kingMoveMask);
                 self.board.xorPieceMask(Piece.Rook, rookMoveMask);
@@ -462,6 +458,13 @@ fn isKingSideCastling(move: Move) bool {
     assert(result == ((move.from == Square.E1 and move.to == Square.H1) or (move.from == Square.E8 and move.to == Square.H8)));
     assert(result != ((move.from == Square.E1 and move.to == Square.A1) or (move.from == Square.E8 and move.to == Square.A8)));
     return result;
+}
+
+fn castlingRookMoveMask(move: Move) Bitboard {
+    const isKingSide = isKingSideCastling(move);
+    const colorlessRookMoveMask = if (isKingSide) File.H.mask() | File.F.mask() else File.A.mask() | File.D.mask();
+    const rankMask = move.from.rank().mask();
+    return colorlessRookMoveMask & rankMask;
 }
 
 fn kingSideCastlingGapMask(forColor: Color) Bitboard {
