@@ -43,7 +43,7 @@ pub const Position = struct {
             .currentContext = PositionContext{
                 .checkers = 0,
                 .pinners = 0,
-                .checkBlockers = [2]Bitboard{ 0, 0 },
+                .checkBlockers = 0,
                 .hash = 0,
                 .castlingRights = CastlingRights.ALL,
                 .movedPiece = Piece.Null,
@@ -174,7 +174,7 @@ pub const Position = struct {
                     self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
                 }
 
-                var movedPiece = undefined;
+                var movedPiece: Piece = undefined;
 
                 if (move.flag == MoveFlag.Promotion) {
                     movedPiece = Piece.Pawn;
@@ -210,7 +210,40 @@ pub const Position = struct {
         self.sideToMove = self.sideToMove.other();
         self.halfmove += 1;
 
-        // TODO: Update checkers, checkBlockers, pinners
+        self.updateCheckInfo();
+    }
+
+    pub fn updateCheckInfo(self: *Position) void {
+        self.currentContext.checkers = 0;
+        self.currentContext.pinners = 0;
+        self.currentContext.checkBlockers = 0;
+
+        const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+
+        const diagonalSliders = self.board.pieceMask(Piece.Bishop) | self.board.pieceMask(Piece.Queen);
+        const orthogonalSliders = self.board.pieceMask(Piece.Rook) | self.board.pieceMask(Piece.Queen);
+
+        const currentSideKingDiagonals = kingSquare.diagonalsMask();
+        const currentSideKingOrthogonals = kingSquare.orthogonalsMask();
+
+        const slidingThreats = ((diagonalSliders & currentSideKingDiagonals) | (orthogonalSliders & currentSideKingOrthogonals)) & self.board.colorMask(self.sideToMove.other());
+        var slidingThreatMasksIter = iterSetBits(slidingThreats);
+
+        while (slidingThreatMasksIter.next()) |attackingSliderMask| {
+            const attackingSliderSquare = Square.fromMask(attackingSliderMask) catch unreachable;
+            const betweenMask = between(kingSquare, attackingSliderSquare);
+            assert(betweenMask & (kingSquare.mask() | attackingSliderMask) == 0);
+            const occupiedBetween = betweenMask & self.board.occupiedMask();
+            const numBlockers = @popCount(occupiedBetween);
+            switch (numBlockers) {
+                0 => self.currentContext.checkers |= attackingSliderMask,
+                1 => {
+                    self.currentContext.pinners |= attackingSliderMask;
+                    self.currentContext.checkBlockers |= occupiedBetween;
+                },
+                else => {},
+            }
+        }
     }
 
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
@@ -276,9 +309,8 @@ pub const Position = struct {
         if (move.flag == MoveFlag.Castling) return self.isPseudoLegalCastlingLegal(move);
         if (self.board.pieceMask(Piece.King) & move.from.mask() != 0) return self.isPseudoLegalKingMoveLegal(move);
 
-        // Check if piece is pinned - if it's a check blocker for our color, it can only move along the pin line
-        const checkBlockers = self.currentContext.checkBlockersForColor(self.sideToMove);
-        return (checkBlockers & move.from.mask() == 0 or
+        // Check if piece is pinned
+        return (self.currentContext.checkBlockers & move.from.mask() == 0 or
             edgeToEdge(move.from, move.to) & self.board.mask(Piece.King, self.sideToMove) != 0);
     }
 

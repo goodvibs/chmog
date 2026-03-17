@@ -8,8 +8,8 @@ const File = @import("./mod.zig").File;
 
 pub const PositionContext = struct {
     checkers: Bitboard, // Can have [0, 2] set bits
-    pinners: Bitboard, // Includes pieces from both sides
-    checkBlockers: [2]Bitboard, // check blockers for white, check blockers for black
+    pinners: Bitboard,
+    checkBlockers: Bitboard,
     hash: Bitboard,
     castlingRights: CastlingRights,
     movedPiece: Piece,
@@ -23,22 +23,9 @@ pub const PositionContext = struct {
     // zero indicates it has never been repeated
     repetition: i10,
 
-    pub fn checkBlockersForColor(self: *const PositionContext, forColor: Color) Bitboard {
-        return self.checkBlockers[@as(usize, forColor.int())];
-    }
-
-    pub fn setCheckBlockersForColor(
-        self: *PositionContext,
-        newBlockers: Bitboard,
-        forColor: Color,
-    ) void {
-        self.checkBlockers[@as(usize, forColor.int())] = newBlockers;
-    }
-
     pub fn validate(self: *const PositionContext) void {
         assert(self.checkers != ~@as(Bitboard, 0));
         assert(@popCount(self.checkers) <= 2);
-        assert(self.checkBlockersForColor(Color.White) & self.checkBlockersForColor(Color.Black) == 0);
         // assert(self.hash != 0);
         assert(self.capturedPiece != Piece.King);
         assert(self.doublePawnPushFile == null or self.capturedPiece == Piece.Null);

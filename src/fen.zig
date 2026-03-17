@@ -262,7 +262,7 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     const positionContext = PositionContext{
         .checkers = 0, // TODO: compute from board state
         .pinners = 0, // TODO: compute from board state
-        .checkBlockers = [2]Bitboard{ 0, 0 }, // TODO: compute from board state
+        .checkBlockers = 0, // TODO: compute from board state
         .hash = 0, // TODO: compute from board state
         .castlingRights = castling,
         .movedPiece = Piece.Null,
