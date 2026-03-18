@@ -253,6 +253,53 @@ pub const Position = struct {
         }
     }
 
+    pub fn unmakeMove(self: *Position, move: Move) !void {
+        self.sideToMove = self.sideToMove.other();
+        self.halfmove -= 1;
+        self.currentContext = self.previousContexts.pop() orelse return error.CannotUnmake;
+
+        switch (move.flag) {
+            .Castling => {
+                const kingMoveMask = move.from.mask() | move.to.mask();
+                const rookMoveMask = castlingRookMoveMask(move);
+
+                self.board.xorPieceMask(Piece.King, kingMoveMask);
+                self.board.xorPieceMask(Piece.Rook, rookMoveMask);
+                self.board.xorColorMask(self.sideToMove, kingMoveMask | rookMoveMask);
+                self.board.xorOccupiedMask(kingMoveMask | rookMoveMask);
+            },
+            .EnPassant => {
+                const captureSquare = Square.fromRankAndFile(enPassantCaptureRank(self.sideToMove), move.to.file());
+                const captureMask = captureSquare.mask();
+
+                self.board.xorPieceMask(Piece.Pawn, move.from.mask() | move.to.mask() | captureMask);
+                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
+                self.board.xorColorMask(self.sideToMove.other(), captureMask);
+                self.board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
+            },
+            else => {
+                const isCapture = self.currentContext.capturedPiece != Piece.Null;
+
+                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
+
+                if (isCapture) {
+                    self.board.xorPieceMask(self.currentContext.capturedPiece, move.to.mask());
+                    self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
+                    self.board.xorOccupiedMask(move.from.mask());
+                } else {
+                    self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
+                }
+
+                if (move.flag == MoveFlag.Promotion) {
+                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
+                    self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
+                } else {
+                    self.board.xorPieceMask(self.currentContext.movedPiece, move.from.mask() | move.to.mask());
+                }
+            },
+        }
+    }
+
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
         var nextMovesPtr = moves;
         const currentSidePieces = self.board.colorMask(self.sideToMove);
