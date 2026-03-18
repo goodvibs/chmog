@@ -108,10 +108,6 @@ pub const Position = struct {
         return self.currentContext.halfmoveClock <= self.halfmove;
     }
 
-    pub fn isInCheckmate(self: *const Position) bool {
-        return !self.hasMoves();
-    }
-
     pub fn isNotInIllegalCheck(self: *const Position) bool {
         return !self.board.isColorInCheck(self.sideToMove.other());
     }
@@ -323,9 +319,8 @@ pub const Position = struct {
                 const blockOrCheckMask = between(checker, king);
 
                 assert(blockOrCheckMask & king.mask() == 0);
-                assert(blockOrCheckMask & checker.mask() != 0);
 
-                break :blk blockOrCheckMask;
+                break :blk blockOrCheckMask | checker.mask();
             } else {
                 isInDoubleCheck = true;
                 break :blk 0;
@@ -530,10 +525,6 @@ pub const Position = struct {
 
             return true;
         }
-    }
-
-    fn hasMoves(_: *const Position) bool {
-        return true;
     }
 
     fn kingSideCastlingImpeded(self: *const Position) bool {
