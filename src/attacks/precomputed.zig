@@ -1,3 +1,5 @@
+//! Precomputed attack lookups for knights and kings.
+
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
 const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
@@ -15,10 +17,12 @@ fn singlePieceAttacksFromMulti(comptime multiPieceAttacks: fn (Bitboard) Bitboar
 const SINGLE_KNIGHT_ATTACKS_LOOKUP = SquareToBitboard.init(singlePieceAttacksFromMulti(knightsAttacks));
 const SINGLE_KING_ATTACKS_LOOKUP = SquareToBitboard.init(singlePieceAttacksFromMulti(kingsAttacks));
 
+/// Returns the bitboard of squares a knight on from attacks.
 pub fn knightAttacks(from: Square) Bitboard {
     return SINGLE_KNIGHT_ATTACKS_LOOKUP.get([1]Square{from});
 }
 
+/// Returns the bitboard of squares a king on from attacks.
 pub fn kingAttacks(from: Square) Bitboard {
     return SINGLE_KING_ATTACKS_LOOKUP.get([1]Square{from});
 }

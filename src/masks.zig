@@ -1,3 +1,5 @@
+//! Bitboard constants: files, ranks, starting positions.
+
 const Bitboard = @import("./mod.zig").Bitboard;
 const Square = @import("./mod.zig").Square;
 

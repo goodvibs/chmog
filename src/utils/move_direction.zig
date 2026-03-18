@@ -1,6 +1,7 @@
 const Square = @import("../mod.zig").Square;
 const SquaresMappingLookup = @import("../mod.zig").utils.SquaresMappingLookup;
 
+/// Direction of movement along rank, file, or diagonal (rook/queen/bishop rays).
 pub const QueenlikeMoveDirection = enum(u3) {
     Up = 0,
     Down = 7,
@@ -11,14 +12,17 @@ pub const QueenlikeMoveDirection = enum(u3) {
     DownRight = 3,
     UpLeft = 4,
 
+    /// Creates direction from 0-based index.
     pub fn fromInt(index: u3) QueenlikeMoveDirection {
         return @enumFromInt(index);
     }
 
+    /// Returns the 0-based index.
     pub fn int(self: QueenlikeMoveDirection) u3 {
         return @intFromEnum(self);
     }
 
+    /// Returns the opposite direction (e.g. Up <-> Down).
     pub fn opposite(self: QueenlikeMoveDirection) QueenlikeMoveDirection {
         return QueenlikeMoveDirection.fromInt(@as(u3, 7) - self.int());
     }
@@ -50,6 +54,7 @@ pub const QueenlikeMoveDirection = enum(u3) {
     }
 };
 
+/// Direction of knight movement (L-shaped).
 pub const KnightMoveDirection = enum(u3) {
     TwoUpOneRight = 0,
     TwoDownOneLeft = 7,
@@ -60,14 +65,17 @@ pub const KnightMoveDirection = enum(u3) {
     TwoDownOneRight = 3,
     TwoUpOneLeft = 4,
 
+    /// Creates direction from 0-based index.
     pub fn fromInt(index: u3) KnightMoveDirection {
         return @enumFromInt(index);
     }
 
+    /// Returns the 0-based index.
     pub fn int(self: KnightMoveDirection) u3 {
         return @intFromEnum(self);
     }
 
+    /// Returns the opposite knight direction.
     pub fn opposite(self: KnightMoveDirection) KnightMoveDirection {
         return KnightMoveDirection.fromInt(@as(u3, 7) - self.int());
     }
@@ -118,9 +126,37 @@ pub const PieceMoveDirection = packed union {
         return PieceMoveDirection.compute(squares[0], squares[1]);
     }
 
+    /// Returns the move direction from one square to another, or null if not on a valid line.
     pub fn lookup(from: Square, to: Square) ?PieceMoveDirection {
         return PIECE_MOVE_DIRECTION_LOOKUP.get([2]Square{ from, to });
     }
 };
 
 const PIECE_MOVE_DIRECTION_LOOKUP = SquaresMappingLookup(2, ?PieceMoveDirection).init(PieceMoveDirection.compute_);
+
+const testing = @import("std").testing;
+
+test "QueenlikeMoveDirection opposite" {
+    try testing.expectEqual(QueenlikeMoveDirection.Down, QueenlikeMoveDirection.Up.opposite());
+    try testing.expectEqual(QueenlikeMoveDirection.Up, QueenlikeMoveDirection.Down.opposite());
+    try testing.expectEqual(QueenlikeMoveDirection.Left, QueenlikeMoveDirection.Right.opposite());
+    try testing.expectEqual(QueenlikeMoveDirection.UpLeft, QueenlikeMoveDirection.DownRight.opposite());
+}
+
+test "KnightMoveDirection opposite" {
+    try testing.expectEqual(KnightMoveDirection.TwoDownOneLeft, KnightMoveDirection.TwoUpOneRight.opposite());
+    try testing.expectEqual(KnightMoveDirection.TwoUpOneRight, KnightMoveDirection.TwoDownOneLeft.opposite());
+}
+
+test "PieceMoveDirection lookup" {
+    const right = PieceMoveDirection.lookup(Square.E4, Square.H4);
+    try testing.expect(right != null);
+    try testing.expect(right.?.queenlike == QueenlikeMoveDirection.Right);
+
+    const knight = PieceMoveDirection.lookup(Square.E4, Square.D6);
+    try testing.expect(knight != null);
+    try testing.expect(knight.?.knight == KnightMoveDirection.TwoUpOneLeft);
+
+    const invalid = PieceMoveDirection.lookup(Square.E4, Square.A1);
+    try testing.expect(invalid == null);
+}

@@ -1,3 +1,5 @@
+//! Zobrist hash computation for board and position context.
+
 const Bitboard = @import("../mod.zig").Bitboard;
 const Board = @import("../mod.zig").Board;
 const Piece = @import("../mod.zig").Piece;
@@ -10,6 +12,7 @@ const zobristKeyForEnPassantFile = @import("../mod.zig").zobrist.zobristKeyForEn
 const zobristKeyForCastlingRights = @import("../mod.zig").zobrist.zobristKeyForCastlingRights;
 const zobristKeyForSideToMove = @import("../mod.zig").zobrist.zobristKeyForSideToMove;
 
+/// Computes the Zobrist hash for the board (piece positions).
 pub fn computeBoardZobristHash(board: *const Board) Bitboard {
     var hash: Bitboard = 0;
     for (1..7) |i| {
@@ -26,6 +29,7 @@ pub fn computeBoardZobristHash(board: *const Board) Bitboard {
     return hash;
 }
 
+/// Computes the Zobrist hash for position context (en passant, castling, side).
 pub fn computePositionContextZobristHash(context: *const PositionContext) Bitboard {
     var hash: Bitboard = 0;
     hash ^= zobristKeyForEnPassantFile(context.doublePawnPushFile);

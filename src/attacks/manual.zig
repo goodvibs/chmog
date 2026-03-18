@@ -1,8 +1,11 @@
+//! Manual attack generation (ray casting, bit shifts).
+
 const masks = @import("../mod.zig").masks;
 const Bitboard = @import("../mod.zig").Bitboard;
 const Color = @import("../mod.zig").Color;
 const Square = @import("../mod.zig").Square;
 
+/// Returns the bitboard of squares pawns can push to (one square forward).
 pub fn pawnsPushes(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
         .White => pawns << 8,
@@ -10,6 +13,7 @@ pub fn pawnsPushes(pawns: Bitboard, by: Color) Bitboard {
     };
 }
 
+/// Returns the bitboard of squares pawns attack diagonally left.
 pub fn pawnsAttacksLeft(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
         .White => (pawns << 9) & ~masks.FILE_H,
@@ -17,6 +21,7 @@ pub fn pawnsAttacksLeft(pawns: Bitboard, by: Color) Bitboard {
     };
 }
 
+/// Returns the bitboard of squares pawns attack diagonally right.
 pub fn pawnsAttacksRight(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
         .White => (pawns << 7) & ~masks.FILE_A,
@@ -24,6 +29,7 @@ pub fn pawnsAttacksRight(pawns: Bitboard, by: Color) Bitboard {
     };
 }
 
+/// Returns the bitboard of squares pawns attack (both diagonals).
 pub fn pawnsAttacks(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
         .White => ((pawns << 7) & ~masks.FILE_A) | ((pawns << 9) & ~masks.FILE_H),
@@ -31,6 +37,7 @@ pub fn pawnsAttacks(pawns: Bitboard, by: Color) Bitboard {
     };
 }
 
+/// Returns the bitboard of squares knights attack from the given knights mask.
 pub fn knightsAttacks(knights: Bitboard) Bitboard {
     const twoUpOneLeft = (knights << 17) & ~masks.FILE_H;
     const twoUpOneRight = (knights << 15) & ~masks.FILE_A;
@@ -45,6 +52,7 @@ pub fn knightsAttacks(knights: Bitboard) Bitboard {
     return twoUpOneLeft | twoUpOneRight | twoLeftOneUp | twoRightOneUp | twoDownOneLeft | twoDownOneRight | twoLeftOneDown | twoRightOneDown;
 }
 
+/// Returns the bitboard of squares kings attack from the given kings mask.
 pub fn kingsAttacks(kings: Bitboard) Bitboard {
     const upLeft = (kings << 9) & ~masks.FILE_H;
     const up = kings << 8;
@@ -57,6 +65,7 @@ pub fn kingsAttacks(kings: Bitboard) Bitboard {
     return upLeft | up | upRight | left | right | downLeft | down | downRight;
 }
 
+/// Returns bishop attacks from the square given occupied blockers.
 pub fn slidingBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     const occupied_ = occupied & ~from.mask();
     var attacks: Bitboard = 0;
@@ -83,6 +92,7 @@ pub fn slidingBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return attacks;
 }
 
+/// Returns rook attacks from the square given occupied blockers.
 pub fn slidingRookAttacks(from: Square, occupied: Bitboard) Bitboard {
     const occupied_ = occupied & ~from.mask();
     var attacks: Bitboard = 0;

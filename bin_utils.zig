@@ -1,5 +1,8 @@
+//! Binary file utilities for code generation scripts.
+
 const std = @import("std");
 
+/// Writes data as raw bytes to the file. Creates parent directories if needed.
 pub fn writeBinaryData(outputPath: []const u8, data: anytype) !void {
     if (std.fs.path.dirname(outputPath)) |dir_path| {
         std.fs.cwd().makePath(dir_path) catch |err| switch (err) {

@@ -1,3 +1,5 @@
+//! Per-position context: checkers, pinners, castling, en passant, hash.
+
 const assert = @import("std").debug.assert;
 const Bitboard = @import("./mod.zig").Bitboard;
 const Position = @import("./mod.zig").Position;
@@ -6,6 +8,7 @@ const CastlingRights = @import("./mod.zig").CastlingRights;
 const Piece = @import("./mod.zig").Piece;
 const File = @import("./mod.zig").File;
 
+/// Context for a single position: checkers, pinners, castling rights, en passant, halfmove clock.
 pub const PositionContext = struct {
     checkers: Bitboard, // Can have [0, 2] set bits
     pinners: Bitboard,
@@ -23,6 +26,7 @@ pub const PositionContext = struct {
     // zero indicates it has never been repeated
     repetition: i10,
 
+    /// Asserts context invariants. Call in debug builds.
     pub fn validate(self: *const PositionContext) void {
         assert(self.checkers != ~@as(Bitboard, 0));
         assert(@popCount(self.checkers) <= 2);

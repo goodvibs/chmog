@@ -1,3 +1,5 @@
+//! Magic bitboard attack generation for bishops and rooks.
+
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
 const Rank = @import("../mod.zig").Rank;
@@ -19,11 +21,13 @@ fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (S
     }.next_;
 }
 
+/// Computes the relevant occupancy mask for bishop magic bitboards.
 pub fn computeBishopRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
     return from.diagonalsMask() & ~(from.mask() | masks.FILE_A | masks.FILE_H | masks.RANK_1 | masks.RANK_8);
 }
 
+/// Computes the relevant occupancy mask for rook magic bitboards.
 pub fn computeRookRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
     const up = from.buildMask(0, stopIfMask(Square.up, masks.RANK_8));
@@ -44,10 +48,14 @@ fn rookRelevantMask(from: Square) Bitboard {
     return ROOK_RELEVANT_MASK_LOOKUP.get([1]Square{from});
 }
 
+/// Total size of bishop magic attack table.
 pub const BISHOP_ATTACK_TABLE_SIZE: usize = (4 << 6) + (44 << 5) + (12 << 7) + (4 << 9);
+/// Total size of rook magic attack table.
 pub const ROOK_ATTACK_TABLE_SIZE: usize = (36 << 10) + (24 << 11) + (4 << 12);
 
+/// Bishop magic bitboard lookup type.
 pub const BishopMagicAttacksLookup = MagicAttacksLookup(BISHOP_ATTACK_TABLE_SIZE);
+/// Rook magic bitboard lookup type.
 pub const RookMagicAttacksLookup = MagicAttacksLookup(ROOK_ATTACK_TABLE_SIZE);
 
 const BISHOP_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("bishopMagicAttacksLookup");
@@ -56,10 +64,12 @@ const BISHOP_MAGIC_ATTACKS_LOOKUP = bytesToValue(BishopMagicAttacksLookup, BISHO
 const ROOK_MAGIC_ATTACKS_LOOKUP_BYTES = @embedFile("rookMagicAttacksLookup");
 const ROOK_MAGIC_ATTACKS_LOOKUP = bytesToValue(RookMagicAttacksLookup, ROOK_MAGIC_ATTACKS_LOOKUP_BYTES);
 
+/// Returns bishop attacks using magic bitboards.
 pub fn slidingBishopAttacks(from: Square, occupied: Bitboard) Bitboard {
     return BISHOP_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
 
+/// Returns rook attacks using magic bitboards.
 pub fn slidingRookAttacks(from: Square, occupied: Bitboard) Bitboard {
     return ROOK_MAGIC_ATTACKS_LOOKUP.get(from, occupied);
 }
@@ -148,6 +158,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
     };
 }
 
+/// Magic number and shift for a single square's magic bitboard lookup.
 pub const MagicInfo = extern struct {
     relevantMask: Bitboard,
     magicNumber: Bitboard,

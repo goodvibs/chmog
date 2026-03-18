@@ -1,7 +1,16 @@
+//! Chess rank: 1-8 (rows).
+
 const Bitboard = @import("./mod.zig").Bitboard;
 const Color = @import("./mod.zig").Color;
 const masks = @import("./mod.zig").masks;
 
+/// Rank errors: InvalidRankChar, RankOutOfBounds.
+pub const RankError = error{
+    InvalidRankChar, // char not in '1'-'8'
+    RankOutOfBounds, // up/down would go off board
+};
+
+/// One of 8 chess ranks (1-8, Eight=0, One=7).
 pub const Rank = enum(u3) {
     Eight = 0,
     Seven = 1,
@@ -12,50 +21,61 @@ pub const Rank = enum(u3) {
     Two = 6,
     One = 7,
 
+    /// Creates rank from 0-7 index (Eight=0, One=7).
     pub fn fromInt(index: u3) Rank {
         return @enumFromInt(index);
     }
 
+    /// Returns 0-7 index.
     pub fn int(self: Rank) u3 {
         return @intFromEnum(self);
     }
 
+    /// Returns the bitboard of all squares in this rank.
     pub fn mask(self: Rank) Bitboard {
         return masks.RANKS[@as(usize, self.int())];
     }
 
+    /// Returns rank char ('1'-'8').
     pub fn char(self: Rank) u8 {
         return @as(u8, 7 - self.int()) + '1';
     }
 
-    pub fn fromChar(char_: u8) !Rank {
-        if (char_ < '1' or char_ > '8') return error.InvalidChar;
+    /// Parses rank from char. Returns InvalidRankChar for invalid input.
+    pub fn fromChar(char_: u8) RankError!Rank {
+        if (char_ < '1' or char_ > '8') return RankError.InvalidRankChar;
         const sevenMinusInt: u3 = @truncate(char_ - '1');
         return Rank.fromInt(7 - sevenMinusInt);
     }
 
+    /// Returns the rank one step toward 8. Returns RankOutOfBounds at 8.
     pub fn up(self: Rank) !Rank {
         return self.upN(1);
     }
 
+    /// Returns the rank one step toward 1. Returns RankOutOfBounds at 1.
     pub fn down(self: Rank) !Rank {
         return self.downN(1);
     }
 
-    pub fn upN(self: Rank, n: u3) !Rank {
-        if (n > self.int()) return error.InvalidRank;
+    /// Returns the rank n steps toward 8. Returns RankOutOfBounds if out of range.
+    pub fn upN(self: Rank, n: u3) RankError!Rank {
+        if (n > self.int()) return RankError.RankOutOfBounds;
         return Rank.fromInt(self.int() - n);
     }
 
-    pub fn downN(self: Rank, n: u3) !Rank {
-        if (n > Rank.One.int() - self.int()) return error.InvalidRank;
+    /// Returns the rank n steps toward 1. Returns RankOutOfBounds if out of range.
+    pub fn downN(self: Rank, n: u3) RankError!Rank {
+        if (n > Rank.One.int() - self.int()) return RankError.RankOutOfBounds;
         return Rank.fromInt(self.int() + n);
     }
 
+    /// Returns the rank reflected across the board (1<->8).
     pub fn reflected(self: Rank) Rank {
         return Rank.fromInt(Rank.One.int() - self.int());
     }
 
+    /// Returns rank from color's perspective (Black sees reflected ranks).
     pub fn fromPerspective(self: Rank, c: Color) Rank {
         return switch (c) {
             .White => self,
@@ -115,10 +135,10 @@ test "rank fromChar" {
     try testing.expectEqual(Rank.Two, try Rank.fromChar('2'));
     try testing.expectEqual(Rank.One, try Rank.fromChar('1'));
 
-    try testing.expectError(error.InvalidChar, Rank.fromChar('0'));
-    try testing.expectError(error.InvalidChar, Rank.fromChar('9'));
-    try testing.expectError(error.InvalidChar, Rank.fromChar('a'));
-    try testing.expectError(error.InvalidChar, Rank.fromChar('A'));
+    try testing.expectError(RankError.InvalidRankChar, Rank.fromChar('0'));
+    try testing.expectError(RankError.InvalidRankChar, Rank.fromChar('9'));
+    try testing.expectError(RankError.InvalidRankChar, Rank.fromChar('a'));
+    try testing.expectError(RankError.InvalidRankChar, Rank.fromChar('A'));
 }
 
 test "rank up" {
@@ -130,7 +150,7 @@ test "rank up" {
     try testing.expectEqual(Rank.Three, try Rank.Two.up());
     try testing.expectEqual(Rank.Two, try Rank.One.up());
 
-    try testing.expectError(error.InvalidRank, Rank.Eight.up());
+    try testing.expectError(RankError.RankOutOfBounds, Rank.Eight.up());
 }
 
 test "rank down" {
@@ -142,7 +162,7 @@ test "rank down" {
     try testing.expectEqual(Rank.Two, try Rank.Three.down());
     try testing.expectEqual(Rank.One, try Rank.Two.down());
 
-    try testing.expectError(error.InvalidRank, Rank.One.down());
+    try testing.expectError(RankError.RankOutOfBounds, Rank.One.down());
 }
 
 test "rank upN" {
@@ -151,9 +171,9 @@ test "rank upN" {
     try testing.expectEqual(Rank.Eight, try Rank.One.upN(7));
     try testing.expectEqual(Rank.One, try Rank.One.upN(0));
 
-    try testing.expectError(error.InvalidRank, Rank.Eight.upN(1));
-    try testing.expectError(error.InvalidRank, Rank.Six.upN(3));
-    try testing.expectError(error.InvalidRank, Rank.Five.upN(4));
+    try testing.expectError(RankError.RankOutOfBounds, Rank.Eight.upN(1));
+    try testing.expectError(RankError.RankOutOfBounds, Rank.Six.upN(3));
+    try testing.expectError(RankError.RankOutOfBounds, Rank.Five.upN(4));
 }
 
 test "rank downN" {
@@ -162,7 +182,7 @@ test "rank downN" {
     try testing.expectEqual(Rank.One, try Rank.Eight.downN(7));
     try testing.expectEqual(Rank.Eight, try Rank.Eight.downN(0));
 
-    try testing.expectError(error.InvalidRank, Rank.One.downN(1));
-    try testing.expectError(error.InvalidRank, Rank.Two.downN(7));
-    try testing.expectError(error.InvalidRank, Rank.Three.downN(6));
+    try testing.expectError(RankError.RankOutOfBounds, Rank.One.downN(1));
+    try testing.expectError(RankError.RankOutOfBounds, Rank.Two.downN(7));
+    try testing.expectError(RankError.RankOutOfBounds, Rank.Three.downN(6));
 }

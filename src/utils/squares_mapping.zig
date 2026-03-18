@@ -1,10 +1,15 @@
+//! Comptime lookup tables mapping square tuples to values.
+
 const std = @import("std");
 const Bitboard = @import("../mod.zig").Bitboard;
 const Square = @import("../mod.zig").Square;
 
+/// Lookup from single square to Bitboard.
 pub const SquareToBitboard = SquaresMappingLookup(1, Bitboard);
+/// Lookup from two squares to Bitboard.
 pub const TwoSquaresToBitboard = SquaresMappingLookup(2, Bitboard);
 
+/// Comptime lookup type: maps [numSquaresPerKey]Square to OutputType.
 pub fn SquaresMappingLookup(comptime numSquaresPerKey: usize, comptime OutputType: type) type {
     return struct {
         const Self = @This();
@@ -13,6 +18,7 @@ pub fn SquaresMappingLookup(comptime numSquaresPerKey: usize, comptime OutputTyp
 
         lookup: [NUM_KEYS]OutputType,
 
+        /// Builds the lookup table at comptime from the compute function.
         pub fn init(comptime computeMapping: fn ([numSquaresPerKey]Square) OutputType) Self {
             comptime {
                 // @setEvalBranchQuota(15 * NUM_KEYS);
@@ -24,6 +30,7 @@ pub fn SquaresMappingLookup(comptime numSquaresPerKey: usize, comptime OutputTyp
             }
         }
 
+        /// Returns the value for the given square key.
         pub fn get(self: Self, key: [numSquaresPerKey]Square) OutputType {
             return self.lookup[indexOfKey(key)];
         }

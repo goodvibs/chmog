@@ -1,3 +1,5 @@
+//! Board state representation using bitboards for piece and color masks.
+
 const mem = @import("std").mem;
 const Writer = @import("std").Io.Writer;
 const Rank = @import("./mod.zig").Rank;
@@ -18,12 +20,15 @@ const slidingRookAttacks = @import("./mod.zig").attacks.slidingRookAttacks;
 const iterSetBits = @import("./mod.zig").utils.iterSetBits;
 const between = @import("./mod.zig").utils.between;
 
+/// Options for board rendering. useAscii: use ASCII (PNBRQK) instead of Unicode symbols.
 pub const BoardRenderOptions = struct { useAscii: bool = false };
 
+/// Bitboard-based chess board with piece masks (Null, Pawn..King) and color masks (White, Black).
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
     colorMasks: [2]Bitboard,
 
+    /// Returns an empty board with no pieces.
     pub fn blank() Board {
         return Board{
             .pieceMasks = mem.zeroes([7]Bitboard),
@@ -31,6 +36,7 @@ pub const Board = struct {
         };
     }
 
+    /// Returns the standard starting position.
     pub fn initial() Board {
         const res = Board{
             .pieceMasks = [7]Bitboard{
@@ -50,14 +56,17 @@ pub const Board = struct {
         return res;
     }
 
+    /// Returns true if color masks union equals occupied mask (internal validation).
     pub fn doColorMasksUnionToOccupiedMask(self: *const Board) bool {
         return self.colorMask(Color.White) | self.colorMask(Color.Black) == self.occupiedMask();
     }
 
+    /// Returns true if color masks do not overlap (internal validation).
     pub fn doColorMasksNotConflict(self: *const Board) bool {
         return self.colorMask(Color.White) & self.colorMask(Color.Black) == 0;
     }
 
+    /// Returns true if piece masks are disjoint and union to occupied (internal validation).
     pub fn arePieceMasksValid(self: *const Board) bool {
         var pieceMasksUnion: Bitboard = 0;
         inline for (self.pieceMasks[@as(usize, comptime Piece.Pawn.int())..]) |pieceMask_| {
@@ -67,48 +76,58 @@ pub const Board = struct {
         return pieceMasksUnion == self.occupiedMask();
     }
 
+    /// Asserts board invariants hold. Call in debug builds.
     pub fn validate(self: *const Board) void {
         assert(self.doColorMasksUnionToOccupiedMask());
         assert(self.doColorMasksNotConflict());
         assert(self.arePieceMasksValid());
     }
 
+    /// Returns true if each color has exactly one king.
     pub fn hasOneKingPerColor(self: *const Board) bool {
         const kingsMask = self.pieceMask(Piece.King);
         return @popCount(kingsMask) == 2 and
             @popCount(kingsMask & self.colorMask(Color.White)) == 1 and
             @popCount(kingsMask & self.colorMask(Color.Black)) == 1;
     }
+    /// Returns true if no pawns are on rank 1 or 8.
     pub fn hasNoPawnsInFirstNorLastRank(self: *const Board) bool {
         return self.pieceMask(Piece.Pawn) & (masks.RANK_1 | masks.RANK_8) == 0;
     }
 
+    /// Returns true if the given color's king is attacked.
     pub fn isColorInCheck(self: *const Board, color: Color) bool {
         const kingMask = self.mask(Piece.King, color);
         assert(@popCount(kingMask) == 1);
         return self.isSquareAttacked(Square.fromMask(kingMask) catch unreachable, color.other());
     }
 
+    /// Returns the bitboard of squares occupied by the given piece type.
     pub fn pieceMask(self: *const Board, piece: Piece) Bitboard {
         return self.pieceMasks[@as(usize, piece.int())];
     }
 
+    /// Returns the bitboard of squares occupied by the given color.
     pub fn colorMask(self: *const Board, color: Color) Bitboard {
         return self.colorMasks[@as(usize, color.int())];
     }
 
+    /// Returns the bitboard of squares with the given piece and color.
     pub fn mask(self: *const Board, piece: Piece, color: Color) Bitboard {
         return self.pieceMask(piece) & self.colorMask(color);
     }
 
+    /// Returns the bitboard of all occupied squares (pieceMasks[Piece.Null]).
     pub fn occupiedMask(self: *const Board) Bitboard {
         return self.pieceMask(Piece.Null);
     }
 
+    /// Returns true if the square has a piece.
     pub fn isOccupiedAtSquare(self: *const Board, square: Square) bool {
         return self.occupiedMask() & square.mask() != 0;
     }
 
+    /// Returns the color at the square, or null if empty.
     pub fn colorAtSquare(self: *const Board, square: Square) ?Color {
         if (self.colorMask(Color.White) & square.mask() != 0) {
             assert(self.isOccupiedAtSquare(square));
@@ -122,6 +141,7 @@ pub const Board = struct {
         }
     }
 
+    /// Returns the piece at the square, or Piece.Null if empty.
     pub fn pieceAtSquare(self: *const Board, square: Square) Piece {
         inline for (@as(usize, comptime Piece.Pawn.int())..@as(usize, comptime Piece.King.int() + 1)) |pieceInt| {
             const piece = Piece.fromInt(pieceInt) catch unreachable;
@@ -134,18 +154,22 @@ pub const Board = struct {
         return Piece.Null;
     }
 
+    /// Toggles the given squares in the color mask (XOR).
     pub fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
+    /// Toggles the given squares in the piece mask (XOR).
     pub fn xorPieceMask(self: *Board, piece: Piece, mask_: Bitboard) void {
         self.pieceMasks[@as(usize, piece.int())] ^= mask_;
     }
 
+    /// Toggles the given squares in the occupied mask (XOR).
     pub fn xorOccupiedMask(self: *Board, mask_: Bitboard) void {
         self.xorPieceMask(Piece.Null, mask_);
     }
 
+    /// Returns true if the square is attacked by any piece of the given color.
     pub fn isSquareAttacked(self: *const Board, square: Square, byColor: Color) bool {
         const mask_ = square.mask();
         const occupied = self.occupiedMask();
@@ -181,6 +205,7 @@ pub const Board = struct {
         }
     }
 
+    /// Returns true if any square in the mask is attacked by the given color.
     pub fn isMaskAttacked(self: *const Board, mask_: Bitboard, byColor: Color) bool {
         const occupied = self.occupiedMask();
         const attackers = self.colorMask(byColor);
@@ -219,6 +244,7 @@ pub const Board = struct {
         }
     }
 
+    /// Renders the board to the writer (ASCII or Unicode).
     pub fn render(self: *const Board, options: BoardRenderOptions, out: *Writer) !void {
         _ = try out.write("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n");
 

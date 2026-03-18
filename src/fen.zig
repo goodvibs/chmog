@@ -1,3 +1,5 @@
+//! FEN parsing and validation.
+
 const Bitboard = @import("./mod.zig").Bitboard;
 const Piece = @import("./mod.zig").Piece;
 const Color = @import("./mod.zig").Color;
@@ -26,6 +28,7 @@ const NUMBER_OF_FIELD_DELIMETERS = FIELD_COUNT - 1;
 const MAX_CHARS = MAX_CHARS_IN_BOARD + NUM_TURN_CHARS + MAX_CHARS_IN_CASTLING_RIGHTS + MAX_CHARS_IN_EN_PASSANT_SQUARE + MAX_CHARS_IN_HALFMOVE_CLOCK + MAX_CHARS_IN_FULLMOVE + NUMBER_OF_FIELD_DELIMETERS;
 const MAX_CHARS_PER_FIELD = [6]usize{ MAX_CHARS_IN_BOARD, NUM_TURN_CHARS, MAX_CHARS_IN_CASTLING_RIGHTS, MAX_CHARS_IN_EN_PASSANT_SQUARE, MAX_CHARS_IN_HALFMOVE_CLOCK, MAX_CHARS_IN_FULLMOVE };
 
+/// FEN parse errors (board, turn, castling, en passant, halfmove, fullmove, validation).
 pub const FenError = error{
     TooManyChars,
     TooManyCharsInBoard,
@@ -215,6 +218,8 @@ fn parseFenFullmove(fenFullmove: []const u8) !u9 {
     }
 }
 
+/// Parses a FEN string into a Position. Returns FenError on invalid input.
+/// alloc: used for PositionContext storage. contextsCapacity: initial capacity hint.
 pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Position {
     const trimmedFen = trim(u8, fen, &[_]u8{ ' ', '\n', '\r', '\t' });
 
@@ -310,6 +315,8 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     return pos;
 }
 
+/// Converts FEN fullmove number and turn to halfmove clock (0-indexed plies).
+/// White to move at fullmove 1 -> 0; Black to move at fullmove 1 -> 1.
 fn fullmoveToHalfmove(fullmove: u9, turn: Color) u10 {
     assert(fullmove > 0);
     return (@as(u10, fullmove) - 1) * 2 + @as(u10, turn.int());
@@ -550,6 +557,13 @@ test "parseFen en passant with different dashes" {
 
     // Note: The code supports em dash and en dash, but standard FEN uses hyphen
     // Testing that '-' works is sufficient
+}
+
+test "fullmoveToHalfmove" {
+    try testing.expectEqual(@as(u10, 0), fullmoveToHalfmove(1, Color.White));
+    try testing.expectEqual(@as(u10, 1), fullmoveToHalfmove(1, Color.Black));
+    try testing.expectEqual(@as(u10, 8), fullmoveToHalfmove(5, Color.White));
+    try testing.expectEqual(@as(u10, 9), fullmoveToHalfmove(5, Color.Black));
 }
 
 test "parseFen fullmove to halfmove conversion" {

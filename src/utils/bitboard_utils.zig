@@ -1,3 +1,5 @@
+//! Bitboard utilities: edge-to-edge, between, iterators, lsb.
+
 const assert = @import("std").debug.assert;
 
 const Bitboard = @import("../mod.zig").Bitboard;
@@ -28,6 +30,8 @@ fn computeEdgeToEdge(squares: [2]Square) Bitboard {
 
 const EDGE_TO_EDGE_LOOKUP = TwoSquaresToBitboard.init(computeEdgeToEdge);
 
+/// Returns the bitboard of all squares on the same rank, file, or diagonal as square1 and square2 (inclusive).
+/// Returns 0 if squares are the same or not on a common line.
 pub fn edgeToEdge(square1: Square, square2: Square) Bitboard {
     return EDGE_TO_EDGE_LOOKUP.get([2]Square{ square1, square2 });
 }
@@ -50,14 +54,18 @@ fn computeBetween(squares: [2]Square) Bitboard {
 
 const BETWEEN_LOOKUP = TwoSquaresToBitboard.init(computeBetween);
 
+/// Returns the bitboard of squares strictly between square1 and square2 on the same line.
+/// Returns 0 if squares are the same or not on a common line.
 pub fn between(square1: Square, square2: Square) Bitboard {
     return BETWEEN_LOOKUP.get([2]Square{ square1, square2 });
 }
 
+/// Returns an iterator over each set bit in the bitboard (one at a time, LSB first).
 pub fn iterSetBits(bitboard: Bitboard) MaskBitsIterator {
     return MaskBitsIterator{ .currentMask = bitboard };
 }
 
+/// Returns an iterator over all subsets of the set bits (2^n combinations for n set bits).
 pub fn iterBitCombinations(bitboard: Bitboard) BitCombinationsIterator {
     return BitCombinationsIterator{
         .set = bitboard,
@@ -65,11 +73,13 @@ pub fn iterBitCombinations(bitboard: Bitboard) BitCombinationsIterator {
     };
 }
 
+/// Isolates the least significant set bit. Fails if mask is 0.
 pub fn lsbMask(mask: Bitboard) Bitboard {
     assert(mask != 0);
     return mask & (0 -% mask);
 }
 
+/// Iterates over set bits in a bitboard, LSB first.
 pub const MaskBitsIterator = struct {
     currentMask: Bitboard,
 
@@ -83,6 +93,7 @@ pub const MaskBitsIterator = struct {
     }
 };
 
+/// Iterates over all subsets of set bits (2^n combinations).
 pub const BitCombinationsIterator = struct {
     set: Bitboard,
     subset: Bitboard,

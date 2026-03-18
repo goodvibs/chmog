@@ -1,3 +1,11 @@
+//! Piece types: Pawn, Knight, Bishop, Rook, Queen, King.
+
+/// Returned when Piece.fromInt receives index 7 (reserved).
+pub const PieceError = error{ InvalidPieceIndex }; // index 7 is reserved
+/// Returned when PromotionPiece.fromPiece receives Pawn or King.
+pub const PromotionPieceError = error{ NotAPromotionPiece }; // Pawn/King cannot promote to themselves
+
+/// Chess piece type (Null, Pawn, Knight, Bishop, Rook, Queen, King).
 pub const Piece = enum(u3) {
     Null = 0,
     Pawn = 1,
@@ -7,15 +15,18 @@ pub const Piece = enum(u3) {
     Queen = 5,
     King = 6,
 
-    pub fn fromInt(index: u3) !Piece {
-        if (index == 7) return error.InvalidPiece;
+    /// Creates piece from 0-6 index. Returns InvalidPieceIndex for 7.
+    pub fn fromInt(index: u3) PieceError!Piece {
+        if (index == 7) return PieceError.InvalidPieceIndex;
         return @enumFromInt(index);
     }
 
+    /// Returns 0-6 index.
     pub fn int(self: Piece) u3 {
         return @intFromEnum(self);
     }
 
+    /// Parses piece from uppercase FEN char (PNBRQK). Returns Null for invalid.
     pub fn fromUppercaseAscii(c: u8) Piece {
         return switch (c) {
             'P' => Piece.Pawn,
@@ -28,6 +39,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Parses piece from lowercase FEN char (pnbrqk). Returns Null for invalid.
     pub fn fromLowercaseAscii(c: u8) Piece {
         return switch (c) {
             'p' => Piece.Pawn,
@@ -40,6 +52,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Returns uppercase FEN char (PNBRQK).
     pub fn uppercaseAscii(self: Piece) u8 {
         return switch (self) {
             Piece.Null => ' ',
@@ -52,6 +65,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Returns lowercase FEN char (pnbrqk).
     pub fn lowercaseAscii(self: Piece) u8 {
         return switch (self) {
             Piece.Null => ' ',
@@ -64,6 +78,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Parses piece from empty Unicode symbol (white). Returns Null for invalid.
     pub fn fromEmptyUnicode(c: u21) Piece {
         return switch (c) {
             '♙' => Piece.Pawn,
@@ -76,6 +91,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Returns empty Unicode symbol for white pieces.
     pub fn emptyUnicode(self: Piece) u21 {
         return switch (self) {
             Piece.Null => ' ',
@@ -88,6 +104,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Returns filled Unicode symbol for black pieces.
     pub fn filledUnicode(self: Piece) u21 {
         return switch (self) {
             Piece.Null => ' ',
@@ -100,6 +117,7 @@ pub const Piece = enum(u3) {
         };
     }
 
+    /// Parses piece from filled Unicode symbol (black). Returns Null for invalid.
     pub fn fromFilledUnicode(c: u21) Piece {
         return switch (c) {
             '♟' => Piece.Pawn,
@@ -113,12 +131,14 @@ pub const Piece = enum(u3) {
     }
 };
 
+/// Pawn promotion piece (Knight, Bishop, Rook, Queen).
 pub const PromotionPiece = enum(u2) {
     Knight = 0,
     Bishop = 1,
     Rook = 2,
     Queen = 3,
 
+    /// Creates from 0-3 index.
     pub fn fromInt(index: u2) PromotionPiece {
         return @enumFromInt(index);
     }
@@ -127,11 +147,13 @@ pub const PromotionPiece = enum(u2) {
         return @intFromEnum(self);
     }
 
-    pub fn fromPiece(piece_: Piece) !PromotionPiece {
-        if (piece_ != Piece.Knight and piece_ != Piece.Bishop and piece_ != Piece.Rook and piece_ != Piece.Queen) return error.InvalidPiece;
+    /// Converts Piece to PromotionPiece. Returns NotAPromotionPiece for Pawn/King.
+    pub fn fromPiece(piece_: Piece) PromotionPieceError!PromotionPiece {
+        if (piece_ != Piece.Knight and piece_ != Piece.Bishop and piece_ != Piece.Rook and piece_ != Piece.Queen) return PromotionPieceError.NotAPromotionPiece;
         return @enumFromInt(piece_.int() - Piece.Knight.int());
     }
 
+    /// Returns the corresponding Piece.
     pub fn piece(self: PromotionPiece) Piece {
         return Piece.fromInt(@as(u3, self.int()) + Piece.Knight.int()) catch unreachable;
     }
@@ -147,7 +169,7 @@ test "piece fromInt and int" {
     try testing.expectEqual(Piece.Rook, try Piece.fromInt(4));
     try testing.expectEqual(Piece.Queen, try Piece.fromInt(5));
     try testing.expectEqual(Piece.King, try Piece.fromInt(6));
-    try testing.expectError(error.InvalidPiece, Piece.fromInt(7));
+    try testing.expectError(PieceError.InvalidPieceIndex, Piece.fromInt(7));
     
     try testing.expectEqual(@as(u3, 0), Piece.Null.int());
     try testing.expectEqual(@as(u3, 1), Piece.Pawn.int());
@@ -219,8 +241,8 @@ test "promotionPiece fromPiece and piece" {
     try testing.expectEqual(PromotionPiece.Bishop, try PromotionPiece.fromPiece(Piece.Bishop));
     try testing.expectEqual(PromotionPiece.Rook, try PromotionPiece.fromPiece(Piece.Rook));
     try testing.expectEqual(PromotionPiece.Queen, try PromotionPiece.fromPiece(Piece.Queen));
-    try testing.expectError(error.InvalidPiece, PromotionPiece.fromPiece(Piece.Pawn));
-    try testing.expectError(error.InvalidPiece, PromotionPiece.fromPiece(Piece.King));
+    try testing.expectError(PromotionPieceError.NotAPromotionPiece, PromotionPiece.fromPiece(Piece.Pawn));
+    try testing.expectError(PromotionPieceError.NotAPromotionPiece, PromotionPiece.fromPiece(Piece.King));
     
     try testing.expectEqual(Piece.Knight, PromotionPiece.Knight.piece());
     try testing.expectEqual(Piece.Bishop, PromotionPiece.Bishop.piece());

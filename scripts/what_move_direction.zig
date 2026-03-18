@@ -1,6 +1,7 @@
 const std = @import("std");
 const chmog = @import("chmog");
 const Square = chmog.Square;
+const SquareError = chmog.SquareError;
 const Bitboard = chmog.Bitboard;
 const PieceMoveDirection = chmog.utils.PieceMoveDirection;
 const clap = @import("clap");
@@ -40,8 +41,8 @@ pub fn main() !void {
         return error.InvalidSquare;
     }
 
-    const fromSquare = Square.fromName([2]u8{ from[0], from[1] }) catch return error.InvalidSquare;
-    const toSquare = Square.fromName([2]u8{ to[0], to[1] }) catch return error.InvalidSquare;
+    const fromSquare = Square.fromName([2]u8{ from[0], from[1] }) catch return SquareError.InvalidSquareName;
+    const toSquare = Square.fromName([2]u8{ to[0], to[1] }) catch return SquareError.InvalidSquareName;
 
     const direction = PieceMoveDirection.lookup(fromSquare, toSquare);
 

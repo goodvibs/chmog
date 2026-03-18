@@ -1,3 +1,5 @@
+//! Utilities: bitboard operations, move direction, PRNG, square mappings.
+
 pub const edgeToEdge = @import("./bitboard_utils.zig").edgeToEdge;
 pub const between = @import("./bitboard_utils.zig").between;
 pub const iterSetBits = @import("./bitboard_utils.zig").iterSetBits;
