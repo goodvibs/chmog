@@ -72,7 +72,7 @@ pub fn main() !void {
         std.debug.print("Error parsing FEN: {}\n", .{err});
         return err;
     };
-    defer position.previousContexts.deinit(allocator);
+    defer position.contexts.deinit(allocator);
 
     const stdout = std.fs.File.stdout();
     var buf: [8192]u8 = undefined;
@@ -83,7 +83,7 @@ pub fn main() !void {
 
     try out.print("\nSide to move: {s}\n", .{if (position.sideToMove == Color.White) "White" else "Black"});
 
-    const castling = position.currentContext.castlingRights;
+    const castling = position.currentContext().castlingRights;
     try out.print("Castling: ", .{});
     if (castling.whiteKingside) try out.print("K", .{});
     if (castling.whiteQueenside) try out.print("Q", .{});
@@ -92,13 +92,13 @@ pub fn main() !void {
     if (castling.mask() == 0) try out.print("-", .{});
     try out.print("\n", .{});
 
-    if (position.currentContext.doublePawnPushFile) |epFile| {
+    if (position.currentContext().doublePawnPushFile) |epFile| {
         const epRank: Rank = if (position.sideToMove == Color.White) Rank.Six else Rank.Three;
         const epSquare = Square.fromRankAndFile(epRank, epFile);
         try out.print("En passant: {s}\n", .{&epSquare.name()});
     }
 
-    try out.print("Halfmove clock: {}\n", .{position.currentContext.halfmoveClock});
+    try out.print("Halfmove clock: {}\n", .{position.currentContext().halfmoveClock});
     try out.print("Fullmove: {}\n", .{(position.halfmove / 2) + 1});
 
     try writer.end();
