@@ -139,7 +139,7 @@ pub const Position = struct {
                 self.board.xorColorMask(self.sideToMove, kingMoveMask | rookMoveMask);
                 self.board.xorOccupiedMask(kingMoveMask | rookMoveMask);
 
-                self.currentContext.castlingRights.toggleMask(CastlingRights.colorMask(self.sideToMove));
+                self.currentContext.castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
             },
             .EnPassant => {
                 self.currentContext.movedPiece = Piece.Pawn;
@@ -169,6 +169,10 @@ pub const Position = struct {
 
                     // Unoccupy source but keep destination occupied
                     self.board.xorOccupiedMask(move.from.mask());
+
+                    if (self.currentContext.capturedPiece == Piece.Rook) {
+                        self.currentContext.castlingRights.clearForRook(move.to);
+                    }
                 } else {
                     // Unoccupy source and occupy destination
                     self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
@@ -195,12 +199,15 @@ pub const Position = struct {
                 switch (movedPiece) {
                     .Pawn => {
                         self.currentContext.halfmoveClock = 0;
-                        if (distance(move.from.int(), move.to.int()) == 2) {
+                        if (distance(move.from.int(), move.to.int()) == 16) {
                             self.currentContext.doublePawnPushFile = move.from.file();
                         }
                     },
                     .King => {
-                        self.currentContext.castlingRights.toggleMask(CastlingRights.colorMask(self.sideToMove));
+                        self.currentContext.castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
+                    },
+                    .Rook => {
+                        self.currentContext.castlingRights.clearForRook(move.from);
                     },
                     else => {},
                 }

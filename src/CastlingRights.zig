@@ -1,4 +1,5 @@
 const Color = @import("./mod.zig").Color;
+const Square = @import("./mod.zig").Square;
 
 pub const CastlingRights = packed struct {
     whiteKingside: bool,
@@ -40,11 +41,29 @@ pub const CastlingRights = packed struct {
         return self.mask() & mask_ != 0;
     }
 
-    pub fn toggleMask(self: *CastlingRights, mask_: u4) void {
-        self.* = CastlingRights.fromMask(self.mask() ^ mask_);
+    pub fn clearMask(self: *CastlingRights, mask_: u4) void {
+        self.* = CastlingRights.fromMask(self.mask() & ~mask_);
     }
 
     pub fn query(self: CastlingRights, isKingSide: bool, color: Color) bool {
         return self.anyInMask(CastlingRights.sideMask(isKingSide) & CastlingRights.colorMask(color));
+    }
+
+    pub fn clearForRook(self: *CastlingRights, on: Square) void {
+        switch (on) {
+            .A8 => {
+                self.blackQueenside = false;
+            },
+            .H8 => {
+                self.blackKingside = false;
+            },
+            .A1 => {
+                self.whiteQueenside = false;
+            },
+            .H1 => {
+                self.whiteKingside = false;
+            },
+            else => {},
+        }
     }
 };
