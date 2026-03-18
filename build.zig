@@ -14,7 +14,7 @@ pub fn build(b: *Build) void {
 
     const clap = b.dependency("clap", .{}).module("clap");
 
-    const bin_utils = b.createModule(.{
+    const binUtils = b.createModule(.{
         .root_source_file = b.path("bin_utils.zig"),
         .target = target,
         .optimize = OptimizeMode.ReleaseFast,
@@ -28,7 +28,7 @@ pub fn build(b: *Build) void {
     });
     genZobristMod.addImport("chmog", baseLibMod);
     genZobristMod.addImport("clap", clap);
-    genZobristMod.addImport("bin_utils", bin_utils);
+    genZobristMod.addImport("bin_utils", binUtils);
 
     const genZobristExec = b.addExecutable(.{
         .name = "gen-zobrist",
@@ -51,7 +51,7 @@ pub fn build(b: *Build) void {
     });
     genMagicMod.addImport("chmog", baseLibMod);
     genMagicMod.addImport("clap", clap);
-    genMagicMod.addImport("bin_utils", bin_utils);
+    genMagicMod.addImport("bin_utils", binUtils);
 
     const genMagicExec = b.addExecutable(.{
         .name = "gen-magic",
@@ -86,13 +86,13 @@ pub fn build(b: *Build) void {
     });
     b.installArtifact(lib);
 
-    const install_docs = b.addInstallDirectory(.{
+    const installDocs = b.addInstallDirectory(.{
         .source_dir = lib.getEmittedDocs(),
         .install_dir = .prefix,
         .install_subdir = "docs",
     });
-    const docs_step = b.step("docs", "Generate and install HTML docs into zig-out/docs");
-    docs_step.dependOn(&install_docs.step);
+    const docsStep = b.step("docs", "Generate and install HTML docs into zig-out/docs");
+    docsStep.dependOn(&installDocs.step);
 
     const libUnitTests = b.addTest(.{
         .root_module = fullLibMod,
