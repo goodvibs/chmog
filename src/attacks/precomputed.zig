@@ -1,10 +1,10 @@
 //! Precomputed attack lookups for knights and kings.
 
-const Bitboard = @import("../mod.zig").Bitboard;
-const Square = @import("../mod.zig").Square;
-const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
-const knightsAttacks = @import("./mod.zig").manual.knightsAttacks;
-const kingsAttacks = @import("./mod.zig").manual.kingsAttacks;
+const Bitboard = @import("../root.zig").Bitboard;
+const Square = @import("../root.zig").Square;
+const SquareToBitboard = @import("../root.zig").utils.SquareToBitboard;
+const knightsAttacks = @import("../root.zig").attacks.manual.knightsAttacks;
+const kingsAttacks = @import("../root.zig").attacks.manual.kingsAttacks;
 
 fn singlePieceAttacksFromMulti(comptime multiPieceAttacks: fn (Bitboard) Bitboard) fn ([1]Square) Bitboard {
     return struct {

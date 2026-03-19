@@ -1,16 +1,16 @@
 //! FEN parsing and validation.
 
-const Bitboard = @import("./mod.zig").Bitboard;
-const Piece = @import("./mod.zig").Piece;
-const Color = @import("./mod.zig").Color;
-const CastlingRights = @import("./mod.zig").CastlingRights;
-const Square = @import("./mod.zig").Square;
-const Board = @import("./mod.zig").Board;
-const Position = @import("./mod.zig").Position;
-const PositionContext = @import("./mod.zig").PositionContext;
-const GameResult = @import("./mod.zig").GameResult;
-const Rank = @import("./mod.zig").Rank;
-const File = @import("./mod.zig").File;
+const Bitboard = @import("./root.zig").Bitboard;
+const Piece = @import("./root.zig").Piece;
+const Color = @import("./root.zig").Color;
+const CastlingRights = @import("./root.zig").CastlingRights;
+const Square = @import("./root.zig").Square;
+const Board = @import("./root.zig").Board;
+const Position = @import("./root.zig").Position;
+const PositionContext = @import("./root.zig").PositionContext;
+const GameResult = @import("./root.zig").GameResult;
+const Rank = @import("./root.zig").Rank;
+const File = @import("./root.zig").File;
 const splitScalar = @import("std").mem.splitScalar;
 const trim = @import("std").mem.trim;
 const ArrayList = @import("std").ArrayList;

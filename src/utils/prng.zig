@@ -1,6 +1,6 @@
 //! Pseudo-random number generator for magic bitboard generation.
 
-const Bitboard = @import("../mod.zig").Bitboard;
+const Bitboard = @import("../root.zig").Bitboard;
 
 /// Returned when Prng.init receives seed 0.
 pub const PrngError = error{ ZeroSeed };

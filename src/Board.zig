@@ -2,23 +2,23 @@
 
 const mem = @import("std").mem;
 const Writer = @import("std").Io.Writer;
-const Rank = @import("./mod.zig").Rank;
-const File = @import("./mod.zig").File;
+const Rank = @import("./root.zig").Rank;
+const File = @import("./root.zig").File;
 const assert = @import("std").debug.assert;
-const Bitboard = @import("./mod.zig").Bitboard;
-const masks = @import("./mod.zig").masks;
-const Piece = @import("./mod.zig").Piece;
-const Color = @import("./mod.zig").Color;
-const Square = @import("./mod.zig").Square;
-const knightAttacks = @import("./mod.zig").attacks.knightAttacks;
-const kingAttacks = @import("./mod.zig").attacks.kingAttacks;
-const pawnsAttacks = @import("./mod.zig").attacks.pawnsAttacks;
-const knightsAttacks = @import("./mod.zig").attacks.knightsAttacks;
-const kingsAttacks = @import("./mod.zig").attacks.kingsAttacks;
-const slidingBishopAttacks = @import("./mod.zig").attacks.slidingBishopAttacks;
-const slidingRookAttacks = @import("./mod.zig").attacks.slidingRookAttacks;
-const iterSetBits = @import("./mod.zig").utils.iterSetBits;
-const between = @import("./mod.zig").utils.between;
+const Bitboard = @import("./root.zig").Bitboard;
+const masks = @import("./root.zig").masks;
+const Piece = @import("./root.zig").Piece;
+const Color = @import("./root.zig").Color;
+const Square = @import("./root.zig").Square;
+const knightAttacks = @import("./root.zig").attacks.knightAttacks;
+const kingAttacks = @import("./root.zig").attacks.kingAttacks;
+const pawnsAttacks = @import("./root.zig").attacks.pawnsAttacks;
+const knightsAttacks = @import("./root.zig").attacks.knightsAttacks;
+const kingsAttacks = @import("./root.zig").attacks.kingsAttacks;
+const slidingBishopAttacks = @import("./root.zig").attacks.slidingBishopAttacks;
+const slidingRookAttacks = @import("./root.zig").attacks.slidingRookAttacks;
+const iterSetBits = @import("./root.zig").utils.iterSetBits;
+const between = @import("./root.zig").utils.between;
 
 /// Options for board rendering. useAscii: use ASCII (PNBRQK) instead of Unicode symbols.
 pub const BoardRenderOptions = struct { useAscii: bool = false };

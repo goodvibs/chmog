@@ -1,8 +1,8 @@
 //! Comptime lookup tables mapping square tuples to values.
 
 const std = @import("std");
-const Bitboard = @import("../mod.zig").Bitboard;
-const Square = @import("../mod.zig").Square;
+const Bitboard = @import("../root.zig").Bitboard;
+const Square = @import("../root.zig").Square;
 
 /// Lookup from single square to Bitboard.
 pub const SquareToBitboard = SquaresMappingLookup(1, Bitboard);

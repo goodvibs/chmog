@@ -1,13 +1,13 @@
 //! Magic bitboard attack generation for bishops and rooks.
 
-const Bitboard = @import("../mod.zig").Bitboard;
-const Square = @import("../mod.zig").Square;
-const Rank = @import("../mod.zig").Rank;
-const Prng = @import("../mod.zig").utils.Prng;
-const SquareToBitboard = @import("../mod.zig").utils.SquareToBitboard;
-const iterBitCombinations = @import("../mod.zig").utils.iterBitCombinations;
-const manual = @import("../mod.zig").attacks.manual;
-const masks = @import("../mod.zig").masks;
+const Bitboard = @import("../root.zig").Bitboard;
+const Square = @import("../root.zig").Square;
+const Rank = @import("../root.zig").Rank;
+const Prng = @import("../root.zig").utils.Prng;
+const SquareToBitboard = @import("../root.zig").utils.SquareToBitboard;
+const iterBitCombinations = @import("../root.zig").utils.iterBitCombinations;
+const manual = @import("../root.zig").attacks.manual;
+const masks = @import("../root.zig").masks;
 const bytesToValue = @import("std").mem.bytesToValue;
 
 fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (Square) ?Square {
@@ -178,7 +178,7 @@ pub const MagicInfo = extern struct {
 
 const std = @import("std");
 const testing = @import("std").testing;
-const renderBitboard = @import("../mod.zig").utils.renderBitboard;
+const renderBitboard = @import("../root.zig").utils.renderBitboard;
 
 fn assertCountEquals(comptime T: type, slice: []const T, value: T, expectedCount: T) !void {
     var count: T = 0;

@@ -1,8 +1,8 @@
 //! Chess rank: 1-8 (rows).
 
-const Bitboard = @import("./mod.zig").Bitboard;
-const Color = @import("./mod.zig").Color;
-const masks = @import("./mod.zig").masks;
+const Bitboard = @import("./root.zig").Bitboard;
+const Color = @import("./root.zig").Color;
+const masks = @import("./root.zig").masks;
 
 /// Rank errors: InvalidRankChar, RankOutOfBounds.
 pub const RankError = error{

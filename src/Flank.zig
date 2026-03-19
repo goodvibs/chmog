@@ -1,11 +1,11 @@
 //! Kingside or queenside flank for castling.
 
-const Bitboard = @import("./mod.zig").Bitboard;
-const Color = @import("./mod.zig").Color;
-const File = @import("./mod.zig").File;
-const Rank = @import("./mod.zig").Rank;
-const Square = @import("./mod.zig").Square;
-const masks = @import("./mod.zig").masks;
+const Bitboard = @import("./root.zig").Bitboard;
+const Color = @import("./root.zig").Color;
+const File = @import("./root.zig").File;
+const Rank = @import("./root.zig").Rank;
+const Square = @import("./root.zig").Square;
+const masks = @import("./root.zig").masks;
 
 /// Represents the kingside (files E-H) or queenside (files A-D) of the board.
 /// Used for castling and other flank-based logic.

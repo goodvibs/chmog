@@ -1,12 +1,12 @@
 //! Per-position context: checkers, pinners, castling, en passant, hash.
 
 const assert = @import("std").debug.assert;
-const Bitboard = @import("./mod.zig").Bitboard;
-const Position = @import("./mod.zig").Position;
-const Color = @import("./mod.zig").Color;
-const CastlingRights = @import("./mod.zig").CastlingRights;
-const Piece = @import("./mod.zig").Piece;
-const File = @import("./mod.zig").File;
+const Bitboard = @import("./root.zig").Bitboard;
+const Position = @import("./root.zig").Position;
+const Color = @import("./root.zig").Color;
+const CastlingRights = @import("./root.zig").CastlingRights;
+const Piece = @import("./root.zig").Piece;
+const File = @import("./root.zig").File;
 
 /// Context for a single position: checkers, pinners, castling rights, en passant, halfmove clock.
 pub const PositionContext = struct {

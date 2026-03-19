@@ -7,7 +7,7 @@ pub fn build(b: *Build) void {
 
     // Base library module - no data dependencies, used by generators
     const baseLibMod = b.createModule(.{
-        .root_source_file = b.path("src/mod.zig"),
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = OptimizeMode.Debug,
     });
@@ -69,7 +69,7 @@ pub fn build(b: *Build) void {
 
     // Full library module - uses generated files
     const fullLibMod = b.createModule(.{
-        .root_source_file = b.path("src/mod.zig"),
+        .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -96,6 +96,7 @@ pub fn build(b: *Build) void {
     docsStep.dependOn(&installDocs.step);
 
     const libUnitTests = b.addTest(.{
+        .name = "chmog-tests",
         .root_module = fullLibMod,
     });
 

@@ -2,11 +2,11 @@
 
 const assert = @import("std").debug.assert;
 
-const Bitboard = @import("../mod.zig").Bitboard;
-const Square = @import("../mod.zig").Square;
-const TwoSquaresToBitboard = @import("../mod.zig").utils.TwoSquaresToBitboard;
-const QueenlikeMoveDirection = @import("../mod.zig").utils.QueenlikeMoveDirection;
-const PieceMoveDirection = @import("../mod.zig").utils.PieceMoveDirection;
+const Bitboard = @import("../root.zig").Bitboard;
+const Square = @import("../root.zig").Square;
+const TwoSquaresToBitboard = @import("../root.zig").utils.TwoSquaresToBitboard;
+const QueenlikeMoveDirection = @import("../root.zig").utils.QueenlikeMoveDirection;
+const PieceMoveDirection = @import("../root.zig").utils.PieceMoveDirection;
 
 fn computeEdgeToEdge(squares: [2]Square) Bitboard {
     const square1 = squares[0];

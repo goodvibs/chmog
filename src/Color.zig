@@ -1,8 +1,8 @@
 //! Chess color: White or Black.
 
-const Bitboard = @import("./mod.zig").Bitboard;
-const Rank = @import("./mod.zig").Rank;
-const masks = @import("./mod.zig").masks;
+const Bitboard = @import("./root.zig").Bitboard;
+const Rank = @import("./root.zig").Rank;
+const masks = @import("./root.zig").masks;
 
 /// Chess color (White or Black).
 pub const Color = enum(u1) {

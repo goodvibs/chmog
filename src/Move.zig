@@ -1,11 +1,11 @@
 //! Move representation: UCI format, castling, promotion.
 
 const std = @import("std");
-const Color = @import("./mod.zig").Color;
-const Flank = @import("./mod.zig").Flank;
-const Square = @import("./mod.zig").Square;
-const PromotionPiece = @import("./mod.zig").PromotionPiece;
-const MoveFlag = @import("./mod.zig").MoveFlag;
+const Color = @import("./root.zig").Color;
+const Flank = @import("./root.zig").Flank;
+const Square = @import("./root.zig").Square;
+const PromotionPiece = @import("./root.zig").PromotionPiece;
+const MoveFlag = @import("./root.zig").MoveFlag;
 
 /// Move-related errors: ExpectedACastlingMove, ExpectedANonPromotion, BufferTooSmall.
 pub const MoveError = error{

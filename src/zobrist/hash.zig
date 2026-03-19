@@ -1,16 +1,16 @@
 //! Zobrist hash computation for board and position context.
 
-const Bitboard = @import("../mod.zig").Bitboard;
-const Board = @import("../mod.zig").Board;
-const Piece = @import("../mod.zig").Piece;
-const Color = @import("../mod.zig").Color;
-const Square = @import("../mod.zig").Square;
-const PositionContext = @import("../mod.zig").PositionContext;
-const iterSetBits = @import("../mod.zig").utils.iterSetBits;
-const zobristKeyforPieceSquare = @import("../mod.zig").zobrist.zobristKeyForPieceSquare;
-const zobristKeyForEnPassantFile = @import("../mod.zig").zobrist.zobristKeyForEnPassantFile;
-const zobristKeyForCastlingRights = @import("../mod.zig").zobrist.zobristKeyForCastlingRights;
-const zobristKeyForSideToMove = @import("../mod.zig").zobrist.zobristKeyForSideToMove;
+const Bitboard = @import("../root.zig").Bitboard;
+const Board = @import("../root.zig").Board;
+const Piece = @import("../root.zig").Piece;
+const Color = @import("../root.zig").Color;
+const Square = @import("../root.zig").Square;
+const PositionContext = @import("../root.zig").PositionContext;
+const iterSetBits = @import("../root.zig").utils.iterSetBits;
+const zobristKeyforPieceSquare = @import("../root.zig").zobrist.zobristKeyForPieceSquare;
+const zobristKeyForEnPassantFile = @import("../root.zig").zobrist.zobristKeyForEnPassantFile;
+const zobristKeyForCastlingRights = @import("../root.zig").zobrist.zobristKeyForCastlingRights;
+const zobristKeyForSideToMove = @import("../root.zig").zobrist.zobristKeyForSideToMove;
 
 /// Computes the Zobrist hash for the board (piece positions).
 pub fn computeBoardZobristHash(board: *const Board) Bitboard {

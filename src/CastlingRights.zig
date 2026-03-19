@@ -1,8 +1,8 @@
 //! Castling rights (KQkq) for each flank and color.
 
-const Color = @import("./mod.zig").Color;
-const Flank = @import("./mod.zig").Flank;
-const Square = @import("./mod.zig").Square;
+const Color = @import("./root.zig").Color;
+const Flank = @import("./root.zig").Flank;
+const Square = @import("./root.zig").Square;
 
 /// Castling rights per color and flank (KQkq in FEN).
 pub const CastlingRights = packed struct {

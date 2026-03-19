@@ -1,9 +1,9 @@
 //! Manual attack generation (ray casting, bit shifts).
 
-const masks = @import("../mod.zig").masks;
-const Bitboard = @import("../mod.zig").Bitboard;
-const Color = @import("../mod.zig").Color;
-const Square = @import("../mod.zig").Square;
+const masks = @import("../root.zig").masks;
+const Bitboard = @import("../root.zig").Bitboard;
+const Color = @import("../root.zig").Color;
+const Square = @import("../root.zig").Square;
 
 /// Returns the bitboard of squares pawns can push to (one square forward).
 pub fn pawnsPushes(pawns: Bitboard, by: Color) Bitboard {

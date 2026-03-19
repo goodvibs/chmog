@@ -1,10 +1,10 @@
 //! Board square: a1-h8, 64 squares indexed 0-63.
 
-const Bitboard = @import("./mod.zig").Bitboard;
-const SquareToBitboard = @import("./mod.zig").utils.SquareToBitboard;
-const Rank = @import("./mod.zig").Rank;
-const File = @import("./mod.zig").File;
-const QueenlikeMoveDirection = @import("./mod.zig").utils.QueenlikeMoveDirection;
+const Bitboard = @import("./root.zig").Bitboard;
+const SquareToBitboard = @import("./root.zig").utils.SquareToBitboard;
+const Rank = @import("./root.zig").Rank;
+const File = @import("./root.zig").File;
+const QueenlikeMoveDirection = @import("./root.zig").utils.QueenlikeMoveDirection;
 
 /// Square errors: EmptyBitboard (fromMask(0)), MultipleBitsSet, InvalidSquareName.
 pub const SquareError = error{

@@ -1,7 +1,7 @@
 //! Chess file: a-h (columns).
 
-const Bitboard = @import("./mod.zig").Bitboard;
-const masks = @import("./mod.zig").masks;
+const Bitboard = @import("./root.zig").Bitboard;
+const masks = @import("./root.zig").masks;
 
 /// File errors: InvalidFileChar, FileOutOfBounds.
 pub const FileError = error{

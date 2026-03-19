@@ -1,8 +1,8 @@
 //! Piece attack generation: magic bitboards for sliding pieces, precomputed for knights/kings.
 
-const Bitboard = @import("../mod.zig").Bitboard;
-const Square = @import("../mod.zig").Square;
-const Piece = @import("../mod.zig").Piece;
+const Bitboard = @import("../root.zig").Bitboard;
+const Square = @import("../root.zig").Square;
+const Piece = @import("../root.zig").Piece;
 
 /// When true, use magic bitboards for bishop/rook; otherwise use manual ray casting.
 pub const USE_MAGIC_BITBOARDS = true;

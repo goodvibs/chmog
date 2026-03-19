@@ -1,5 +1,5 @@
-const Square = @import("../mod.zig").Square;
-const SquaresMappingLookup = @import("../mod.zig").utils.SquaresMappingLookup;
+const Square = @import("../root.zig").Square;
+const SquaresMappingLookup = @import("../root.zig").utils.SquaresMappingLookup;
 
 /// Direction of movement along rank, file, or diagonal (rook/queen/bishop rays).
 pub const QueenlikeMoveDirection = enum(u3) {

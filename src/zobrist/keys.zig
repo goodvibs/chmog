@@ -1,11 +1,11 @@
 //! Zobrist key lookup for piece-square, en passant, castling, side to move.
 
-const Bitboard = @import("../mod.zig").Bitboard;
-const Piece = @import("../mod.zig").Piece;
-const Square = @import("../mod.zig").Square;
-const File = @import("../mod.zig").File;
-const CastlingRights = @import("../mod.zig").CastlingRights;
-const Color = @import("../mod.zig").Color;
+const Bitboard = @import("../root.zig").Bitboard;
+const Piece = @import("../root.zig").Piece;
+const Square = @import("../root.zig").Square;
+const File = @import("../root.zig").File;
+const CastlingRights = @import("../root.zig").CastlingRights;
+const Color = @import("../root.zig").Color;
 const bytesToValue = @import("std").mem.bytesToValue;
 
 const NUM_PIECE_SQUARE_KEYS = 6 * 64;
