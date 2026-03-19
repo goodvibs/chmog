@@ -12,7 +12,8 @@ pub fn build(b: *Build) void {
         .optimize = OptimizeMode.Debug,
     });
 
-    const clap = b.dependency("clap", .{}).module("clap");
+    const clap_dep = b.lazyDependency("clap", .{}) orelse return;
+    const clap = clap_dep.module("clap");
 
     const binUtils = b.createModule(.{
         .root_source_file = b.path("bin_utils.zig"),
