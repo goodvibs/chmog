@@ -100,8 +100,8 @@ pub fn build(b: *Build) void {
     });
 
     const runLibUnitTests = b.addRunArtifact(libUnitTests);
-    const testStep = b.step("test", "Run unit tests");
-    testStep.dependOn(&runLibUnitTests.step);
+    const unitTestStep = b.step("unit-test", "Run unit tests");
+    unitTestStep.dependOn(&runLibUnitTests.step);
 
     const perftTestMod = b.createModule(.{
         .root_source_file = b.path("tests/perft_test.zig"),
@@ -109,11 +109,16 @@ pub fn build(b: *Build) void {
         .optimize = optimize,
     });
     perftTestMod.addImport("chmog", fullLibMod);
-    const perftIntegrationTests = b.addTest(.{
+    const perftTests = b.addTest(.{
         .root_module = perftTestMod,
     });
-    const runPerftTests = b.addRunArtifact(perftIntegrationTests);
-    testStep.dependOn(&runPerftTests.step);
+    const runPerftTests = b.addRunArtifact(perftTests);
+    const perftTestStep = b.step("perft-test", "Run perft tests");
+    perftTestStep.dependOn(&runPerftTests.step);
+
+    const testStep = b.step("test", "Run all tests");
+    testStep.dependOn(unitTestStep);
+    testStep.dependOn(perftTestStep);
 
     // Expose generation scripts
     const runZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
