@@ -181,8 +181,23 @@ pub const Position = struct {
                 context.capturedPiece = self.board.pieceAtSquare(move.to);
                 const isCapture = context.capturedPiece != Piece.Null;
 
-                // Current side must move from source to destination no matter what
-                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
+                var movedPiece: Piece = undefined;
+
+                if (move.flag == MoveFlag.Promotion) {
+                    movedPiece = Piece.Pawn;
+
+                    // Reset halfmove clock for pawn move
+                    context.halfmoveClock = 0;
+                    // Remove pawn from source
+                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
+                    // Put promotion piece at destination
+                    self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
+                } else {
+                    movedPiece = self.board.pieceAtSquare(move.from);
+
+                    // Toggle moved piece at source and destination
+                    self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
+                }
 
                 if (isCapture) {
                     context.halfmoveClock = 0;
@@ -201,23 +216,8 @@ pub const Position = struct {
                     self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
                 }
 
-                var movedPiece: Piece = undefined;
-
-                if (move.flag == MoveFlag.Promotion) {
-                    movedPiece = Piece.Pawn;
-
-                    // Reset halfmove clock for pawn move
-                    context.halfmoveClock = 0;
-                    // Remove pawn from source
-                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
-                    // Put promotion piece at destination
-                    self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
-                } else {
-                    movedPiece = self.board.pieceAtSquare(move.from);
-
-                    // Toggle moved piece at source and destination
-                    self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
-                }
+                // Current side must move from source to destination no matter what
+                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
 
                 switch (movedPiece) {
                     .Pawn => {
