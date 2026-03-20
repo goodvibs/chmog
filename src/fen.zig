@@ -284,7 +284,6 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     const pos = Position{
         .board = board,
         .contexts = contexts,
-        .currentDepth = 0,
         .halfmove = halfmove,
         .gameResult = GameResult.None,
         .sideToMove = turn,

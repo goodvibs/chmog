@@ -39,18 +39,21 @@ pub const PositionError = error{
 pub const Position = struct {
     board: Board,
     contexts: ArrayList(PositionContext),
-    currentDepth: usize,
     halfmove: u10,
     gameResult: GameResult,
     sideToMove: Color,
 
+    fn depth(self: *const Position) usize {
+        return self.contexts.items.len - 1;
+    }
+
     /// Returns the context for the current position (castling, en passant, checkers, etc.).
     pub fn currentContext(self: *const Position) *const PositionContext {
-        return &self.contexts.items[self.currentDepth];
+        return &self.contexts.getLast();
     }
 
     fn currentContextMut(self: *Position) *PositionContext {
-        return &self.contexts.items[self.currentDepth];
+        return &self.contexts.items[self.depth()];
     }
 
     /// Creates the standard starting position. contextsCapacity: hint for move history.
@@ -71,7 +74,6 @@ pub const Position = struct {
         return Position{
             .board = Board.initial(),
             .contexts = contexts,
-            .currentDepth = 0,
             .halfmove = 0,
             .gameResult = GameResult.None,
             .sideToMove = Color.White,
@@ -112,10 +114,10 @@ pub const Position = struct {
         self.board.validate();
         self.currentContext().validate();
         self.validateCurrentContext();
-        for (self.contexts.items[0 .. self.currentDepth + 1]) |context| {
+        for (self.contexts.items) |context| {
             context.validate();
         }
-        assert(self.currentDepth == self.halfmove);
+        assert(self.depth() == self.halfmove);
         assert(self.doHalfmoveAndSideToMoveAgree());
     }
 
@@ -138,8 +140,7 @@ pub const Position = struct {
 
     /// Applies the move and advances the position. Allocator used for context stack.
     pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) !void {
-        try self.contexts.append(allocator, self.contexts.items[self.currentDepth]);
-        self.currentDepth += 1;
+        try self.contexts.append(allocator, self.currentContext().*);
 
         const context = self.currentContextMut();
         context.halfmoveClock += 1;
@@ -279,14 +280,15 @@ pub const Position = struct {
 
     /// Reverts the move. Returns PositionError.CannotUnmakeAtRoot if at root.
     pub fn unmakeMove(self: *Position, move: Move) PositionError!void {
-        if (self.currentDepth == 0) return PositionError.CannotUnmakeAtRoot;
+        if (self.depth() == 0) return PositionError.CannotUnmakeAtRoot;
 
-        const movedPiece = self.contexts.items[self.currentDepth].movedPiece;
-        const capturedPiece = self.contexts.items[self.currentDepth].capturedPiece;
+        const movedPiece = self.currentContext().movedPiece;
+        const capturedPiece = self.currentContext().capturedPiece;
+
+        _ = self.contexts.pop();
 
         self.sideToMove = self.sideToMove.other();
         self.halfmove -= 1;
-        self.currentDepth -= 1;
 
         switch (move.flag) {
             .Castling => {
@@ -315,7 +317,7 @@ pub const Position = struct {
                 if (isCapture) {
                     self.board.xorPieceMask(capturedPiece, move.to.mask());
                     self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
-                    self.board.xorOccupiedMask(move.from.mask());
+                    self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
                 } else {
                     self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
                 }
@@ -332,8 +334,8 @@ pub const Position = struct {
 
     /// Perft (perft function): counts leaf nodes at given depth.
     /// Depth 0 returns 1. Depth 1 returns number of legal moves.
-    pub fn perft(self: *Position, allocator: std.mem.Allocator, depth: u8) !u64 {
-        if (depth == 0) return 1;
+    pub fn perft(self: *Position, allocator: std.mem.Allocator, target_depth: u8) !u64 {
+        if (target_depth == 0) return 1;
 
         var moves: [256]Move = undefined;
         const end_ptr = self.genLegalMoves(&moves);
@@ -343,7 +345,7 @@ pub const Position = struct {
         var i: usize = 0;
         while (i < num_moves) : (i += 1) {
             try self.makeMove(allocator, moves[i]);
-            nodes += try self.perft(allocator, depth - 1);
+            nodes += try self.perft(allocator, target_depth - 1);
             self.unmakeMove(moves[i]) catch unreachable;
         }
         return nodes;
