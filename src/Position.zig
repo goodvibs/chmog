@@ -330,6 +330,25 @@ pub const Position = struct {
         }
     }
 
+    /// Perft (perft function): counts leaf nodes at given depth.
+    /// Depth 0 returns 1. Depth 1 returns number of legal moves.
+    pub fn perft(self: *Position, allocator: std.mem.Allocator, depth: u8) !u64 {
+        if (depth == 0) return 1;
+
+        var moves: [256]Move = undefined;
+        const end_ptr = self.genLegalMoves(&moves);
+        const num_moves = end_ptr - moves[0..].ptr;
+
+        var nodes: u64 = 0;
+        var i: usize = 0;
+        while (i < num_moves) : (i += 1) {
+            try self.makeMove(allocator, moves[i]);
+            nodes += try self.perft(allocator, depth - 1);
+            self.unmakeMove(moves[i]) catch unreachable;
+        }
+        return nodes;
+    }
+
     /// Fills the moves buffer with legal moves and returns a pointer past the last move.
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
         var nextMovesPtr = moves;

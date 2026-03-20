@@ -96,13 +96,24 @@ pub fn build(b: *Build) void {
     docsStep.dependOn(&installDocs.step);
 
     const libUnitTests = b.addTest(.{
-        .name = "chmog-tests",
         .root_module = fullLibMod,
     });
 
     const runLibUnitTests = b.addRunArtifact(libUnitTests);
     const testStep = b.step("test", "Run unit tests");
     testStep.dependOn(&runLibUnitTests.step);
+
+    const perftTestMod = b.createModule(.{
+        .root_source_file = b.path("tests/perft_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    perftTestMod.addImport("chmog", fullLibMod);
+    const perftIntegrationTests = b.addTest(.{
+        .root_module = perftTestMod,
+    });
+    const runPerftTests = b.addRunArtifact(perftIntegrationTests);
+    testStep.dependOn(&runPerftTests.step);
 
     // Expose generation scripts
     const runZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
