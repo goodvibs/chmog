@@ -71,13 +71,18 @@ pub const Position = struct {
             .halfmoveClock = 0,
             .repetition = 0,
         });
-        return Position{
+        var pos = Position{
             .board = Board.initial(),
             .contexts = contexts,
             .halfmove = 0,
             .gameResult = GameResult.None,
             .sideToMove = Color.White,
         };
+        pos.updateCheckInfo();
+
+        pos.validate();
+
+        return pos;
     }
 
     /// Asserts current context invariants. Call in debug builds.
