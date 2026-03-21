@@ -199,6 +199,7 @@ pub const Position = struct {
                     // Toggle moved piece at source and destination
                     self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
                 }
+                context.movedPiece = movedPiece;
 
                 if (isCapture) {
                     context.halfmoveClock = 0;
