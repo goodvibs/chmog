@@ -299,7 +299,7 @@ pub const Position = struct {
         switch (move.flag) {
             .Castling => {
                 const kingMoveMask = move.from.mask() | move.to.mask();
-                const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, self.sideToMove.other());
+                const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, self.sideToMove);
 
                 self.board.xorPieceMask(Piece.King, kingMoveMask);
                 self.board.xorPieceMask(Piece.Rook, rookMoveMask);
