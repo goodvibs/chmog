@@ -310,16 +310,13 @@ pub const Position = struct {
                 self.board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
             },
             else => {
-                const isCapture = capturedPiece != Piece.Null;
-
                 self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
+                self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
 
-                if (isCapture) {
+                if (capturedPiece != Piece.Null) {
                     self.board.xorPieceMask(capturedPiece, move.to.mask());
                     self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
-                    self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
-                } else {
-                    self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
+                    self.board.xorOccupiedMask(move.to.mask());
                 }
 
                 if (move.flag == MoveFlag.Promotion) {
