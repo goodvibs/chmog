@@ -317,11 +317,16 @@ pub const Position = struct {
             },
             else => {
                 self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
+
+                // Greedily unoccupy source and occupy destination
+                // If destination was already occupied (move was a capture), we will need to xor it again
                 self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
 
                 if (capturedPiece != Piece.Null) {
                     self.board.xorPieceMask(capturedPiece, move.to.mask());
                     self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
+
+                    // Undo greedy xor
                     self.board.xorOccupiedMask(move.to.mask());
                 }
 
