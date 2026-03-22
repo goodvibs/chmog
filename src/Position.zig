@@ -154,69 +154,45 @@ pub const Position = struct {
             .Castling => {
                 assert(self.board.mask(Piece.King, self.sideToMove) == move.from.mask());
 
+                self.board.makeOrUnmakeCastlingMove(move, self.sideToMove);
+
                 self.currentContextMut().movedPiece = Piece.King;
                 self.currentContextMut().capturedPiece = Piece.Null;
                 self.currentContextMut().halfmoveClock = 0;
-
-                const kingMoveMask = move.from.mask() | move.to.mask();
-                const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, self.sideToMove);
-
-                self.board.xorPieceMask(Piece.King, kingMoveMask);
-                self.board.xorPieceMask(Piece.Rook, rookMoveMask);
-                self.board.xorColorMask(self.sideToMove, kingMoveMask | rookMoveMask);
-                self.board.xorOccupiedMask(kingMoveMask | rookMoveMask);
-
                 self.currentContextMut().castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
             },
             .EnPassant => {
+                self.board.makeOrUnmakeEnPassantMove(move, self.sideToMove);
+
                 self.currentContextMut().movedPiece = Piece.Pawn;
                 self.currentContextMut().capturedPiece = Piece.Pawn;
                 self.currentContextMut().halfmoveClock = 0;
-
-                const captureSquare = Square.fromRankAndFile(self.sideToMove.enPassantCaptureRank(), move.to.file());
-                const captureMask = captureSquare.mask();
-
-                self.board.xorPieceMask(Piece.Pawn, move.from.mask() | move.to.mask() | captureMask);
-                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
-                self.board.xorColorMask(self.sideToMove.other(), captureMask);
-                self.board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
             },
             else => {
-                self.currentContextMut().capturedPiece = self.board.pieceAtSquare(move.to);
-                const isCapture = self.currentContext().capturedPiece != Piece.Null;
-
-                var movedPiece: Piece = undefined;
-
-                if (move.flag == MoveFlag.Promotion) {
-                    movedPiece = Piece.Pawn;
-
-                    self.currentContextMut().halfmoveClock = 0;
-                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
-                    self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
-                } else {
-                    movedPiece = self.board.pieceAtSquare(move.from);
-
-                    self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
+                switch (move.flag) {
+                    .Promotion => {
+                        self.currentContextMut().movedPiece = Piece.Pawn;
+                        self.currentContextMut().halfmoveClock = 0;
+                    },
+                    .Normal => {
+                        self.currentContextMut().movedPiece = self.board.pieceAtSquare(move.from);
+                    },
+                    else => unreachable,
                 }
-                self.currentContextMut().movedPiece = movedPiece;
 
-                if (isCapture) {
+                self.currentContextMut().capturedPiece = self.board.pieceAtSquare(move.to);
+
+                self.board.makeOrUnmakeNormalOrPromotionMove(move, self.sideToMove, self.currentContext().movedPiece, self.currentContext().capturedPiece);
+
+                if (self.currentContext().capturedPiece != Piece.Null) {
                     self.currentContextMut().halfmoveClock = 0;
-                    self.board.xorPieceMask(self.currentContextMut().capturedPiece, move.to.mask());
-                    self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
-
-                    self.board.xorOccupiedMask(move.from.mask());
 
                     if (self.currentContext().capturedPiece == Piece.Rook) {
                         self.currentContextMut().castlingRights.clearForRook(move.to);
                     }
-                } else {
-                    self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
                 }
 
-                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
-
-                switch (movedPiece) {
+                switch (self.currentContext().movedPiece) {
                     .Pawn => {
                         self.currentContextMut().halfmoveClock = 0;
                         if (abs(move.from.int(), move.to.int()) == 16) {
@@ -288,44 +264,13 @@ pub const Position = struct {
 
         switch (move.flag) {
             .Castling => {
-                const kingMoveMask = move.from.mask() | move.to.mask();
-                const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, self.sideToMove);
-
-                self.board.xorPieceMask(Piece.King, kingMoveMask);
-                self.board.xorPieceMask(Piece.Rook, rookMoveMask);
-                self.board.xorColorMask(self.sideToMove, kingMoveMask | rookMoveMask);
-                self.board.xorOccupiedMask(kingMoveMask | rookMoveMask);
+                self.board.makeOrUnmakeCastlingMove(move, self.sideToMove);
             },
             .EnPassant => {
-                const captureSquare = Square.fromRankAndFile(self.sideToMove.enPassantCaptureRank(), move.to.file());
-                const captureMask = captureSquare.mask();
-
-                self.board.xorPieceMask(Piece.Pawn, move.from.mask() | move.to.mask() | captureMask);
-                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
-                self.board.xorColorMask(self.sideToMove.other(), captureMask);
-                self.board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
+                self.board.makeOrUnmakeEnPassantMove(move, self.sideToMove);
             },
             else => {
-                self.board.xorColorMask(self.sideToMove, move.from.mask() | move.to.mask());
-
-                // Greedily unoccupy source and occupy destination
-                // If destination was already occupied (move was a capture), we will need to xor it again
-                self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
-
-                if (capturedPiece != Piece.Null) {
-                    self.board.xorPieceMask(capturedPiece, move.to.mask());
-                    self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
-
-                    // Undo greedy xor
-                    self.board.xorOccupiedMask(move.to.mask());
-                }
-
-                if (move.flag == MoveFlag.Promotion) {
-                    self.board.xorPieceMask(Piece.Pawn, move.from.mask());
-                    self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
-                } else {
-                    self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
-                }
+                self.board.makeOrUnmakeNormalOrPromotionMove(move, self.sideToMove, movedPiece, capturedPiece);
             },
         }
     }

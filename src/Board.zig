@@ -4,7 +4,10 @@ const mem = @import("std").mem;
 const Writer = @import("std").Io.Writer;
 const Rank = @import("./root.zig").Rank;
 const File = @import("./root.zig").File;
+const Flank = @import("./root.zig").Flank;
 const assert = @import("std").debug.assert;
+const Move = @import("./root.zig").Move;
+const MoveFlag = @import("./root.zig").MoveFlag;
 const Bitboard = @import("./root.zig").Bitboard;
 const masks = @import("./root.zig").masks;
 const Piece = @import("./root.zig").Piece;
@@ -169,6 +172,55 @@ pub const Board = struct {
         self.xorPieceMask(Piece.Null, mask_);
     }
 
+    pub fn makeOrUnmakeCastlingMove(self: *Board, move: Move, forColor: Color) void {
+        assert(move.flag == MoveFlag.Castling);
+
+        const kingMoveMask = move.from.mask() | move.to.mask();
+        const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, forColor);
+
+        self.xorPieceMask(Piece.King, kingMoveMask);
+        self.xorPieceMask(Piece.Rook, rookMoveMask);
+        self.xorColorMask(forColor, kingMoveMask | rookMoveMask);
+        self.xorOccupiedMask(kingMoveMask | rookMoveMask);
+    }
+
+    pub fn makeOrUnmakeEnPassantMove(self: *Board, move: Move, forColor: Color) void {
+        assert(move.flag == MoveFlag.EnPassant);
+
+        const captureSquare = Square.fromRankAndFile(forColor.enPassantCaptureRank(), move.to.file());
+        const captureMask = captureSquare.mask();
+
+        self.xorPieceMask(Piece.Pawn, move.from.mask() | move.to.mask() | captureMask);
+        self.xorColorMask(forColor, move.from.mask() | move.to.mask());
+        self.xorColorMask(forColor.other(), captureMask);
+        self.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
+    }
+
+    pub fn makeOrUnmakeNormalOrPromotionMove(self: *Board, move: Move, forColor: Color, movedPiece: Piece, capturedPiece: Piece) void {
+        assert(move.flag == MoveFlag.Normal or move.flag == MoveFlag.Promotion);
+
+        self.xorColorMask(forColor, move.from.mask() | move.to.mask());
+
+        // Greedily occupy/unoccupy source and destination
+        // If move is a capture, we will need to xor the destination again
+        self.xorOccupiedMask(move.from.mask() | move.to.mask());
+
+        if (capturedPiece != Piece.Null) {
+            self.xorPieceMask(capturedPiece, move.to.mask());
+            self.xorColorMask(forColor.other(), move.to.mask());
+
+            // Undo greedy xor
+            self.xorOccupiedMask(move.to.mask());
+        }
+
+        if (move.flag == MoveFlag.Promotion) {
+            self.xorPieceMask(Piece.Pawn, move.from.mask());
+            self.xorPieceMask(move.promotion.piece(), move.to.mask());
+        } else {
+            self.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
+        }
+    }
+
     /// Returns true if the square is attacked by any piece of the given color.
     pub fn isSquareAttacked(self: *const Board, square: Square, byColor: Color) bool {
         const mask_ = square.mask();
@@ -289,6 +341,11 @@ pub const Board = struct {
         _ = try out.write("    a   b   c   d   e   f   g   h\n");
     }
 };
+
+/// Returns the bitboard of squares the rook moves through when castling on the given flank and color.
+fn castlingRookMoveMask(flank: Flank, color: Color) Bitboard {
+    return flank.castlingRookFilesMask() & color.backRank().mask();
+}
 
 const testing = @import("std").testing;
 
