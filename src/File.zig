@@ -102,10 +102,10 @@ test "file mask" {
     const file = File.A;
     const mask = file.mask();
     try testing.expect(mask != 0);
-    
+
     // Each file should have exactly 8 bits set (one per rank)
     try testing.expectEqual(@as(u32, 8), @popCount(mask));
-    
+
     // Test all files have masks
     for (0..8) |i| {
         const f = File.fromInt(@as(u3, @intCast(i)));
@@ -118,7 +118,7 @@ test "file lowercaseChar and uppercaseChar" {
     try testing.expectEqual('a', File.A.lowercaseChar());
     try testing.expectEqual('b', File.B.lowercaseChar());
     try testing.expectEqual('h', File.H.lowercaseChar());
-    
+
     try testing.expectEqual('A', File.A.uppercaseChar());
     try testing.expectEqual('B', File.B.uppercaseChar());
     try testing.expectEqual('H', File.H.uppercaseChar());
@@ -133,7 +133,7 @@ test "file fromLowercaseChar" {
     try testing.expectEqual(File.F, try File.fromLowercaseChar('f'));
     try testing.expectEqual(File.G, try File.fromLowercaseChar('g'));
     try testing.expectEqual(File.H, try File.fromLowercaseChar('h'));
-    
+
     try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('`'));
     try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('i'));
     try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('A'));
@@ -149,7 +149,7 @@ test "file fromUppercaseChar" {
     try testing.expectEqual(File.F, try File.fromUppercaseChar('F'));
     try testing.expectEqual(File.G, try File.fromUppercaseChar('G'));
     try testing.expectEqual(File.H, try File.fromUppercaseChar('H'));
-    
+
     try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('@'));
     try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('I'));
     try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('a'));
@@ -164,7 +164,7 @@ test "file left" {
     try testing.expectEqual(File.E, try File.F.left());
     try testing.expectEqual(File.F, try File.G.left());
     try testing.expectEqual(File.G, try File.H.left());
-    
+
     try testing.expectError(FileError.FileOutOfBounds, File.A.left());
 }
 
@@ -176,7 +176,7 @@ test "file right" {
     try testing.expectEqual(File.F, try File.E.right());
     try testing.expectEqual(File.G, try File.F.right());
     try testing.expectEqual(File.H, try File.G.right());
-    
+
     try testing.expectError(FileError.FileOutOfBounds, File.H.right());
 }
 
@@ -186,7 +186,7 @@ test "file leftN" {
     try testing.expectEqual(File.A, try File.E.leftN(4));
     try testing.expectEqual(File.A, try File.A.leftN(0));
     try testing.expectEqual(File.A, try File.H.leftN(7));
-    
+
     try testing.expectError(FileError.FileOutOfBounds, File.A.leftN(1));
     try testing.expectError(FileError.FileOutOfBounds, File.B.leftN(3));
     try testing.expectError(FileError.FileOutOfBounds, File.C.leftN(4));
@@ -198,7 +198,7 @@ test "file rightN" {
     try testing.expectEqual(File.E, try File.A.rightN(4));
     try testing.expectEqual(File.A, try File.A.rightN(0));
     try testing.expectEqual(File.H, try File.A.rightN(7));
-    
+
     try testing.expectError(FileError.FileOutOfBounds, File.H.rightN(1));
     try testing.expectError(FileError.FileOutOfBounds, File.G.rightN(2));
     try testing.expectError(FileError.FileOutOfBounds, File.F.rightN(3));

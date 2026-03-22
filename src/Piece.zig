@@ -1,9 +1,9 @@
 //! Piece types: Pawn, Knight, Bishop, Rook, Queen, King.
 
 /// Returned when Piece.fromInt receives index 7 (reserved).
-pub const PieceError = error{ InvalidPieceIndex }; // index 7 is reserved
+pub const PieceError = error{InvalidPieceIndex}; // index 7 is reserved
 /// Returned when PromotionPiece.fromPiece receives Pawn or King.
-pub const PromotionPieceError = error{ NotAPromotionPiece }; // Pawn/King cannot promote to themselves
+pub const PromotionPieceError = error{NotAPromotionPiece}; // Pawn/King cannot promote to themselves
 
 /// Chess piece type (Null, Pawn, Knight, Bishop, Rook, Queen, King).
 pub const Piece = enum(u3) {
@@ -170,7 +170,7 @@ test "piece fromInt and int" {
     try testing.expectEqual(Piece.Queen, try Piece.fromInt(5));
     try testing.expectEqual(Piece.King, try Piece.fromInt(6));
     try testing.expectError(PieceError.InvalidPieceIndex, Piece.fromInt(7));
-    
+
     try testing.expectEqual(@as(u3, 0), Piece.Null.int());
     try testing.expectEqual(@as(u3, 1), Piece.Pawn.int());
     try testing.expectEqual(@as(u3, 6), Piece.King.int());
@@ -184,7 +184,7 @@ test "piece ascii conversions" {
     try testing.expectEqual(Piece.Queen, Piece.fromUppercaseAscii('Q'));
     try testing.expectEqual(Piece.King, Piece.fromUppercaseAscii('K'));
     try testing.expectEqual(Piece.Null, Piece.fromUppercaseAscii('X'));
-    
+
     try testing.expectEqual(Piece.Pawn, Piece.fromLowercaseAscii('p'));
     try testing.expectEqual(Piece.Knight, Piece.fromLowercaseAscii('n'));
     try testing.expectEqual(Piece.Bishop, Piece.fromLowercaseAscii('b'));
@@ -192,11 +192,11 @@ test "piece ascii conversions" {
     try testing.expectEqual(Piece.Queen, Piece.fromLowercaseAscii('q'));
     try testing.expectEqual(Piece.King, Piece.fromLowercaseAscii('k'));
     try testing.expectEqual(Piece.Null, Piece.fromLowercaseAscii('x'));
-    
+
     try testing.expectEqual('P', Piece.Pawn.uppercaseAscii());
     try testing.expectEqual('N', Piece.Knight.uppercaseAscii());
     try testing.expectEqual('K', Piece.King.uppercaseAscii());
-    
+
     try testing.expectEqual('p', Piece.Pawn.lowercaseAscii());
     try testing.expectEqual('n', Piece.Knight.lowercaseAscii());
     try testing.expectEqual('k', Piece.King.lowercaseAscii());
@@ -210,7 +210,7 @@ test "piece unicode conversions" {
     try testing.expectEqual(Piece.Queen, Piece.fromEmptyUnicode('♕'));
     try testing.expectEqual(Piece.King, Piece.fromEmptyUnicode('♔'));
     try testing.expectEqual(Piece.Null, Piece.fromEmptyUnicode('X'));
-    
+
     try testing.expectEqual(Piece.Pawn, Piece.fromFilledUnicode('♟'));
     try testing.expectEqual(Piece.Knight, Piece.fromFilledUnicode('♞'));
     try testing.expectEqual(Piece.Bishop, Piece.fromFilledUnicode('♝'));
@@ -218,10 +218,10 @@ test "piece unicode conversions" {
     try testing.expectEqual(Piece.Queen, Piece.fromFilledUnicode('♛'));
     try testing.expectEqual(Piece.King, Piece.fromFilledUnicode('♚'));
     try testing.expectEqual(Piece.Null, Piece.fromFilledUnicode('X'));
-    
+
     try testing.expectEqual('♙', Piece.Pawn.emptyUnicode());
     try testing.expectEqual('♔', Piece.King.emptyUnicode());
-    
+
     try testing.expectEqual('♟', Piece.Pawn.filledUnicode());
     try testing.expectEqual('♚', Piece.King.filledUnicode());
 }
@@ -231,7 +231,7 @@ test "promotionPiece fromInt and int" {
     try testing.expectEqual(PromotionPiece.Bishop, PromotionPiece.fromInt(1));
     try testing.expectEqual(PromotionPiece.Rook, PromotionPiece.fromInt(2));
     try testing.expectEqual(PromotionPiece.Queen, PromotionPiece.fromInt(3));
-    
+
     try testing.expectEqual(@as(u2, 0), PromotionPiece.Knight.int());
     try testing.expectEqual(@as(u2, 3), PromotionPiece.Queen.int());
 }
@@ -243,7 +243,7 @@ test "promotionPiece fromPiece and piece" {
     try testing.expectEqual(PromotionPiece.Queen, try PromotionPiece.fromPiece(Piece.Queen));
     try testing.expectError(PromotionPieceError.NotAPromotionPiece, PromotionPiece.fromPiece(Piece.Pawn));
     try testing.expectError(PromotionPieceError.NotAPromotionPiece, PromotionPiece.fromPiece(Piece.King));
-    
+
     try testing.expectEqual(Piece.Knight, PromotionPiece.Knight.piece());
     try testing.expectEqual(Piece.Bishop, PromotionPiece.Bishop.piece());
     try testing.expectEqual(Piece.Rook, PromotionPiece.Rook.piece());

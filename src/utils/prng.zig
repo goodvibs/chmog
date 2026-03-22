@@ -3,7 +3,7 @@
 const Bitboard = @import("../root.zig").Bitboard;
 
 /// Returned when Prng.init receives seed 0.
-pub const PrngError = error{ ZeroSeed };
+pub const PrngError = error{ZeroSeed};
 
 /// Xorshift-style PRNG producing Bitboard values.
 pub const Prng = struct {
