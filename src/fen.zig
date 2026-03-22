@@ -281,7 +281,7 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     errdefer contexts.deinit(alloc);
     try contexts.append(alloc, positionContext);
 
-    const pos = Position{
+    var pos = Position{
         .board = board,
         .contexts = contexts,
         .halfmove = halfmove,
@@ -310,6 +310,8 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
     if (!pos.isNotInIllegalCheck()) {
         return FenError.IsInIllegalCheck;
     }
+
+    pos.updateCheckInfo();
 
     return pos;
 }
