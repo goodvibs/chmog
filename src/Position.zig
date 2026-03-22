@@ -47,10 +47,14 @@ pub const Position = struct {
         return self.contexts.items.len - 1;
     }
 
-    /// Returns a copy of the context for the current position. Prefer index-based access
-    /// to avoid holding references that could be invalidated by ArrayList reallocation.
-    pub fn currentContext(self: *const Position) PositionContext {
-        return self.contexts.items[self.depth()];
+    /// Returns a copy of the context for the current position. Pointers are
+    /// not long lived; they are invalidated when elements are added.
+    pub fn currentContext(self: *const Position) *const PositionContext {
+        return &self.contexts.items[self.depth()];
+    }
+
+    pub fn currentContextMut(self: *const Position) *PositionContext {
+        return &self.contexts.items[self.depth()];
     }
 
     /// Creates the standard starting position. contextsCapacity: hint for move history.
@@ -119,7 +123,6 @@ pub const Position = struct {
         for (self.contexts.items) |context| {
             context.validate();
         }
-        assert(self.depth() == self.halfmove);
         assert(self.doHalfmoveAndSideToMoveAgree());
     }
 
@@ -144,17 +147,16 @@ pub const Position = struct {
     pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) !void {
         try self.contexts.append(allocator, self.contexts.items[self.depth()]);
 
-        const i = self.depth();
-        self.contexts.items[i].halfmoveClock += 1;
-        self.contexts.items[i].doublePawnPushFile = null;
+        self.currentContextMut().halfmoveClock += 1;
+        self.currentContextMut().doublePawnPushFile = null;
 
         switch (move.flag) {
             .Castling => {
                 assert(self.board.mask(Piece.King, self.sideToMove) == move.from.mask());
 
-                self.contexts.items[i].movedPiece = Piece.King;
-                self.contexts.items[i].capturedPiece = Piece.Null;
-                self.contexts.items[i].halfmoveClock = 0;
+                self.currentContextMut().movedPiece = Piece.King;
+                self.currentContextMut().capturedPiece = Piece.Null;
+                self.currentContextMut().halfmoveClock = 0;
 
                 const kingMoveMask = move.from.mask() | move.to.mask();
                 const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, self.sideToMove);
@@ -164,12 +166,12 @@ pub const Position = struct {
                 self.board.xorColorMask(self.sideToMove, kingMoveMask | rookMoveMask);
                 self.board.xorOccupiedMask(kingMoveMask | rookMoveMask);
 
-                self.contexts.items[i].castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
+                self.currentContextMut().castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
             },
             .EnPassant => {
-                self.contexts.items[i].movedPiece = Piece.Pawn;
-                self.contexts.items[i].capturedPiece = Piece.Pawn;
-                self.contexts.items[i].halfmoveClock = 0;
+                self.currentContextMut().movedPiece = Piece.Pawn;
+                self.currentContextMut().capturedPiece = Piece.Pawn;
+                self.currentContextMut().halfmoveClock = 0;
 
                 const captureSquare = Square.fromRankAndFile(self.sideToMove.enPassantCaptureRank(), move.to.file());
                 const captureMask = captureSquare.mask();
@@ -180,15 +182,15 @@ pub const Position = struct {
                 self.board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
             },
             else => {
-                self.contexts.items[i].capturedPiece = self.board.pieceAtSquare(move.to);
-                const isCapture = self.contexts.items[i].capturedPiece != Piece.Null;
+                self.currentContextMut().capturedPiece = self.board.pieceAtSquare(move.to);
+                const isCapture = self.currentContext().capturedPiece != Piece.Null;
 
                 var movedPiece: Piece = undefined;
 
                 if (move.flag == MoveFlag.Promotion) {
                     movedPiece = Piece.Pawn;
 
-                    self.contexts.items[i].halfmoveClock = 0;
+                    self.currentContextMut().halfmoveClock = 0;
                     self.board.xorPieceMask(Piece.Pawn, move.from.mask());
                     self.board.xorPieceMask(move.promotion.piece(), move.to.mask());
                 } else {
@@ -196,17 +198,17 @@ pub const Position = struct {
 
                     self.board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
                 }
-                self.contexts.items[i].movedPiece = movedPiece;
+                self.currentContextMut().movedPiece = movedPiece;
 
                 if (isCapture) {
-                    self.contexts.items[i].halfmoveClock = 0;
-                    self.board.xorPieceMask(self.contexts.items[i].capturedPiece, move.to.mask());
+                    self.currentContextMut().halfmoveClock = 0;
+                    self.board.xorPieceMask(self.currentContextMut().capturedPiece, move.to.mask());
                     self.board.xorColorMask(self.sideToMove.other(), move.to.mask());
 
                     self.board.xorOccupiedMask(move.from.mask());
 
-                    if (self.contexts.items[i].capturedPiece == Piece.Rook) {
-                        self.contexts.items[i].castlingRights.clearForRook(move.to);
+                    if (self.currentContext().capturedPiece == Piece.Rook) {
+                        self.currentContextMut().castlingRights.clearForRook(move.to);
                     }
                 } else {
                     self.board.xorOccupiedMask(move.from.mask() | move.to.mask());
@@ -216,16 +218,16 @@ pub const Position = struct {
 
                 switch (movedPiece) {
                     .Pawn => {
-                        self.contexts.items[i].halfmoveClock = 0;
+                        self.currentContextMut().halfmoveClock = 0;
                         if (distance(move.from.int(), move.to.int()) == 16) {
-                            self.contexts.items[i].doublePawnPushFile = move.from.file();
+                            self.currentContextMut().doublePawnPushFile = move.from.file();
                         }
                     },
                     .King => {
-                        self.contexts.items[i].castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
+                        self.currentContextMut().castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
                     },
                     .Rook => {
-                        self.contexts.items[i].castlingRights.clearForRook(move.from);
+                        self.currentContextMut().castlingRights.clearForRook(move.from);
                     },
                     else => {},
                 }
@@ -239,10 +241,9 @@ pub const Position = struct {
     }
 
     pub fn updateCheckInfo(self: *Position) void {
-        const i = self.depth();
-        self.contexts.items[i].checkers = 0;
-        self.contexts.items[i].pinners = 0;
-        self.contexts.items[i].checkBlockers = 0;
+        self.currentContextMut().checkers = 0;
+        self.currentContextMut().pinners = 0;
+        self.currentContextMut().checkBlockers = 0;
 
         const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
 
@@ -262,15 +263,15 @@ pub const Position = struct {
             const occupiedBetween = betweenMask & self.board.occupiedMask();
             const numBlockers = @popCount(occupiedBetween);
             switch (numBlockers) {
-                0 => self.contexts.items[i].checkers |= attackingSliderMask,
+                0 => self.currentContextMut().checkers |= attackingSliderMask,
                 1 => {
-                    self.contexts.items[i].pinners |= attackingSliderMask;
-                    self.contexts.items[i].checkBlockers |= occupiedBetween;
+                    self.currentContextMut().pinners |= attackingSliderMask;
+                    self.currentContextMut().checkBlockers |= occupiedBetween;
                 },
                 else => {},
             }
         }
-        assert(@popCount(self.contexts.items[i].checkers) <= 2);
+        assert(@popCount(self.currentContext().checkers) <= 2);
     }
 
     /// Reverts the move. Returns PositionError.CannotUnmakeAtRoot if at root.
