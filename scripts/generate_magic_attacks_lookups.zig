@@ -48,11 +48,17 @@ pub fn main() !void {
     }
 
     if (res.args.@"bishop-output") |path| {
-        const lookup = BishopMagicAttacksLookup.init(bishopRelevantMask, manual.slidingBishopAttacks);
+        const lookup = BishopMagicAttacksLookup.init(
+            bishopRelevantMask,
+            manual.slidingBishopAttacks,
+        );
         try writeBinaryData(path, lookup);
     }
     if (res.args.@"rook-output") |path| {
-        const lookup = RookMagicAttacksLookup.init(rookRelevantMask, manual.slidingRookAttacks);
+        const lookup = RookMagicAttacksLookup.init(
+            rookRelevantMask,
+            manual.slidingRookAttacks,
+        );
         try writeBinaryData(path, lookup);
     }
 }

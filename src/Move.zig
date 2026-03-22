@@ -15,8 +15,14 @@ pub const MoveError = error{
 };
 
 const CASTLING_BY_FLANK_AND_COLOR: [2][2]Move = [2][2]Move{
-    .{ Move.newNonPromotion(Square.E1, Square.G1, MoveFlag.Castling) catch unreachable, Move.newNonPromotion(Square.E1, Square.C1, MoveFlag.Castling) catch unreachable },
-    .{ Move.newNonPromotion(Square.E8, Square.G8, MoveFlag.Castling) catch unreachable, Move.newNonPromotion(Square.E8, Square.C8, MoveFlag.Castling) catch unreachable },
+    .{
+        Move.newNonPromotion(Square.E1, Square.G1, MoveFlag.Castling) catch unreachable,
+        Move.newNonPromotion(Square.E1, Square.C1, MoveFlag.Castling) catch unreachable,
+    },
+    .{
+        Move.newNonPromotion(Square.E8, Square.G8, MoveFlag.Castling) catch unreachable,
+        Move.newNonPromotion(Square.E8, Square.C8, MoveFlag.Castling) catch unreachable,
+    },
 };
 
 /// Chess move: from/to squares, promotion piece, and flag (normal, en passant, castling, promotion).
