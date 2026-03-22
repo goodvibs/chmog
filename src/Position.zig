@@ -219,7 +219,7 @@ pub const Position = struct {
                 switch (movedPiece) {
                     .Pawn => {
                         self.currentContextMut().halfmoveClock = 0;
-                        if (distance(move.from.int(), move.to.int()) == 16) {
+                        if (abs(move.from.int(), move.to.int()) == 16) {
                             self.currentContextMut().doublePawnPushFile = move.from.file();
                         }
                     },
@@ -631,6 +631,6 @@ fn splatMoves(from: Square, to: Bitboard, moves: [*]Move) [*]Move {
 }
 
 /// Returns the absolute difference between two values.
-fn distance(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+fn abs(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
     return @max(a, b) - @min(a, b);
 }
