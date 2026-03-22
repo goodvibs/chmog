@@ -11,48 +11,48 @@ const NodeCountLookups = struct {
         1, // Depth 0
         20, // Depth 1
         400, // Depth 2
-        8902,
-        197281,
-        4865609,
-        119060324,
+        8902, // Depth 3
+        197281, // Depth 4
+        4865609, // Depth 5
+        119060324, // Depth 6
     };
 
     const KIWIPETE = [_]u64{
-        1,
-        48,
-        2039,
-        97862,
-        4085603,
-        193690690,
+        1, // Depth 0
+        48, // Depth 1
+        2039, // Depth 2
+        97862, // Depth 3
+        4085603, // Depth 4
+        193690690, // Depth 5
     };
 
     const POSITION_3 = [_]u64{
-        1,
-        14,
-        191,
-        2812,
-        43238,
-        674624,
-        11030083,
-        178633661,
+        1, // Depth 0
+        14, // Depth 1
+        191, // Depth 2
+        2812, // Depth 3
+        43238, // Depth 4
+        674624, // Depth 5
+        11030083, // Depth 6
+        178633661, // Depth 7
     };
 
     const POSITION_4 = [_]u64{
-        1,
-        6,
-        264,
-        9467,
-        422333,
-        15833292,
+        1, // Depth 0
+        6, // Depth 1
+        264, // Depth 2
+        9467, // Depth 3
+        422333, // Depth 4
+        15833292, // Depth 5
     };
 
     const POSITION_5 = [_]u64{
-        1,
-        44,
-        1486,
-        62379,
-        2103487,
-        89941194,
+        1, // Depth 0
+        44, // Depth 1
+        1486, // Depth 2
+        62379, // Depth 3
+        2103487, // Depth 4
+        89941194, // Depth 5
     };
 };
 
