@@ -11,6 +11,7 @@ const MoveFlag = @import("./root.zig").MoveFlag;
 const Bitboard = @import("./root.zig").Bitboard;
 const masks = @import("./root.zig").masks;
 const Piece = @import("./root.zig").Piece;
+const PromotionPiece = @import("./root.zig").PromotionPiece;
 const Color = @import("./root.zig").Color;
 const Square = @import("./root.zig").Square;
 const knightAttacks = @import("./root.zig").attacks.knightAttacks;
@@ -172,6 +173,7 @@ pub const Board = struct {
         self.xorPieceMask(Piece.Null, mask_);
     }
 
+    /// Applies or reverts a castling move. Symmetric: calling twice restores the board. Requires move.flag == MoveFlag.Castling.
     pub fn makeOrUnmakeCastlingMove(self: *Board, move: Move, forColor: Color) void {
         assert(move.flag == MoveFlag.Castling);
 
@@ -184,6 +186,7 @@ pub const Board = struct {
         self.xorOccupiedMask(kingMoveMask | rookMoveMask);
     }
 
+    /// Applies or reverts an en passant capture. Symmetric. Requires move.flag == MoveFlag.EnPassant.
     pub fn makeOrUnmakeEnPassantMove(self: *Board, move: Move, forColor: Color) void {
         assert(move.flag == MoveFlag.EnPassant);
 
@@ -196,6 +199,7 @@ pub const Board = struct {
         self.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
     }
 
+    /// Applies or reverts a normal or promotion move. movedPiece: piece on from before move. capturedPiece: piece on to before move, or Piece.Null. Symmetric.
     pub fn makeOrUnmakeNormalOrPromotionMove(self: *Board, move: Move, forColor: Color, movedPiece: Piece, capturedPiece: Piece) void {
         assert(move.flag == MoveFlag.Normal or move.flag == MoveFlag.Promotion);
 
@@ -348,6 +352,7 @@ fn castlingRookMoveMask(flank: Flank, color: Color) Bitboard {
 }
 
 const testing = @import("std").testing;
+const std = @import("std");
 
 test "board blank" {
     const board = Board.blank();
@@ -411,4 +416,155 @@ test "board isSquareAttacked" {
     try testing.expect(testBoard.isSquareAttacked(Square.D3, Color.White));
     try testing.expect(testBoard.isSquareAttacked(Square.F3, Color.White));
     try testing.expect(!testBoard.isSquareAttacked(Square.E3, Color.White));
+}
+
+test "board pieceAtSquare and colorAtSquare" {
+    const board = Board.initial();
+    try testing.expectEqual(Piece.King, board.pieceAtSquare(Square.E1));
+    try testing.expectEqual(Color.White, board.colorAtSquare(Square.E1) orelse unreachable);
+    try testing.expectEqual(Piece.Pawn, board.pieceAtSquare(Square.E2));
+    try testing.expectEqual(Color.White, board.colorAtSquare(Square.E2) orelse unreachable);
+    try testing.expectEqual(Piece.King, board.pieceAtSquare(Square.E8));
+    try testing.expectEqual(Color.Black, board.colorAtSquare(Square.E8) orelse unreachable);
+    try testing.expectEqual(Piece.Null, board.pieceAtSquare(Square.E4));
+    try testing.expectEqual(@as(?Color, null), board.colorAtSquare(Square.E4));
+
+    const blankBoard = Board.blank();
+    try testing.expectEqual(Piece.Null, blankBoard.pieceAtSquare(Square.E4));
+    try testing.expectEqual(@as(?Color, null), blankBoard.colorAtSquare(Square.E4));
+}
+
+test "board isOccupiedAtSquare" {
+    const board = Board.initial();
+    try testing.expect(!board.isOccupiedAtSquare(Square.E4));
+    try testing.expect(board.isOccupiedAtSquare(Square.E2));
+
+    const blankBoard = Board.blank();
+    try testing.expect(!blankBoard.isOccupiedAtSquare(Square.E4));
+}
+
+test "board validate does not panic" {
+    Board.initial().validate();
+
+    var board = Board.blank();
+    board.xorPieceMask(Piece.King, Square.E1.mask());
+    board.xorColorMask(Color.White, Square.E1.mask());
+    board.xorOccupiedMask(Square.E1.mask());
+    board.validate();
+}
+
+test "board hasOneKingPerColor and hasNoPawnsInFirstNorLastRank" {
+    const board = Board.initial();
+    try testing.expect(board.hasOneKingPerColor());
+    try testing.expect(board.hasNoPawnsInFirstNorLastRank());
+}
+
+test "board makeOrUnmakeCastlingMove" {
+    var board = Board.initial();
+    const originalOccupied = board.occupiedMask();
+    const originalKingMask = board.pieceMask(Piece.King);
+    const originalRookMask = board.pieceMask(Piece.Rook);
+
+    const move = Move.castling(Flank.Kingside, Color.White);
+    board.makeOrUnmakeCastlingMove(move, Color.White);
+    board.makeOrUnmakeCastlingMove(move, Color.White);
+
+    try testing.expectEqual(originalOccupied, board.occupiedMask());
+    try testing.expectEqual(originalKingMask, board.pieceMask(Piece.King));
+    try testing.expectEqual(originalRookMask, board.pieceMask(Piece.Rook));
+    board.validate();
+}
+
+test "board makeOrUnmakeEnPassantMove" {
+    var board = Board.blank();
+    // White pawn on e5, black pawn on d5. White captures en passant e5xd6.
+    board.xorPieceMask(Piece.Pawn, Square.E5.mask() | Square.D5.mask());
+    board.xorColorMask(Color.White, Square.E5.mask());
+    board.xorColorMask(Color.Black, Square.D5.mask());
+    board.xorOccupiedMask(Square.E5.mask() | Square.D5.mask());
+
+    const originalOccupied = board.occupiedMask();
+    const originalPawnMask = board.pieceMask(Piece.Pawn);
+
+    const move = Move.newNonPromotion(Square.E5, Square.D6, MoveFlag.EnPassant) catch unreachable;
+    board.makeOrUnmakeEnPassantMove(move, Color.White);
+    board.makeOrUnmakeEnPassantMove(move, Color.White);
+
+    try testing.expectEqual(originalOccupied, board.occupiedMask());
+    try testing.expectEqual(originalPawnMask, board.pieceMask(Piece.Pawn));
+    board.validate();
+}
+
+test "board makeOrUnmakeNormalOrPromotionMove" {
+    // Normal move: e2 to e4
+    var board = Board.initial();
+    const originalOccupied = board.occupiedMask();
+    const move = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal) catch unreachable;
+    board.makeOrUnmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
+    board.makeOrUnmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
+    try testing.expectEqual(originalOccupied, board.occupiedMask());
+    board.validate();
+
+    // Capture: white rook on e1 takes black pawn on e7 (simplified: build minimal board)
+    var captureBoard = Board.blank();
+    captureBoard.xorPieceMask(Piece.Rook, Square.E1.mask());
+    captureBoard.xorPieceMask(Piece.Pawn, Square.E7.mask());
+    captureBoard.xorColorMask(Color.White, Square.E1.mask());
+    captureBoard.xorColorMask(Color.Black, Square.E7.mask());
+    captureBoard.xorOccupiedMask(Square.E1.mask() | Square.E7.mask());
+    const captureOriginalOccupied = captureBoard.occupiedMask();
+    const captureMove = Move.newNonPromotion(Square.E1, Square.E7, MoveFlag.Normal) catch unreachable;
+    captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
+    captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
+    try testing.expectEqual(captureOriginalOccupied, captureBoard.occupiedMask());
+    captureBoard.validate();
+
+    // Promotion: e7 to e8
+    var promoBoard = Board.blank();
+    promoBoard.xorPieceMask(Piece.Pawn, Square.E7.mask());
+    promoBoard.xorColorMask(Color.White, Square.E7.mask());
+    promoBoard.xorOccupiedMask(Square.E7.mask());
+    const promoOriginalOccupied = promoBoard.occupiedMask();
+    const promoMove = Move.newPromotion(Square.E7, Square.E8, PromotionPiece.Queen);
+    promoBoard.makeOrUnmakeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
+    promoBoard.makeOrUnmakeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
+    try testing.expectEqual(promoOriginalOccupied, promoBoard.occupiedMask());
+    promoBoard.validate();
+}
+
+test "board isMaskAttacked" {
+    const board = Board.initial();
+    try testing.expect(!board.isMaskAttacked(Square.E4.mask(), Color.White));
+    try testing.expect(!board.isMaskAttacked(Square.E4.mask(), Color.Black));
+
+    var testBoard = Board.blank();
+    testBoard.xorPieceMask(Piece.Bishop, Square.C4.mask());
+    testBoard.xorColorMask(Color.White, Square.C4.mask());
+    testBoard.xorOccupiedMask(Square.C4.mask());
+    try testing.expect(testBoard.isMaskAttacked(Square.D5.mask(), Color.White));
+    try testing.expect(testBoard.isMaskAttacked(Square.D5.mask() | Square.E4.mask(), Color.White));
+}
+
+test "board render" {
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+
+    {
+        var file = tmp.dir.createFile("board.txt", .{}) catch @panic("createFile failed");
+        var buf: [4096]u8 = undefined;
+        var writer = file.writer(&buf);
+        try Board.initial().render(.{}, &writer.interface);
+        try writer.end();
+        file.close();
+    }
+
+    var file = tmp.dir.openFile("board.txt", .{}) catch @panic("openFile failed");
+    defer file.close();
+    const output = try file.readToEndAlloc(testing.allocator, 4096);
+    defer testing.allocator.free(output);
+
+    try testing.expect(mem.indexOf(u8, output, "8") != null);
+    try testing.expect(mem.indexOf(u8, output, "a") != null);
+    try testing.expect(mem.indexOf(u8, output, "h") != null);
+    try testing.expect(mem.indexOf(u8, output, "┌") != null);
 }
