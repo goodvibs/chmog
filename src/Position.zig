@@ -169,20 +169,20 @@ pub const Position = struct {
                 self.currentContextMut().halfmoveClock = 0;
             },
             else => {
-                switch (move.flag) {
-                    .Promotion => {
-                        self.currentContextMut().movedPiece = Piece.Pawn;
-                        self.currentContextMut().halfmoveClock = 0;
-                    },
-                    .Normal => {
-                        self.currentContextMut().movedPiece = self.board.pieceAtSquare(move.from);
-                    },
+                self.currentContextMut().movedPiece = switch (move.flag) {
+                    .Promotion => Piece.Pawn,
+                    .Normal => self.board.pieceAtSquare(move.from),
                     else => unreachable,
-                }
+                };
 
                 self.currentContextMut().capturedPiece = self.board.pieceAtSquare(move.to);
 
-                self.board.makeOrUnmakeNormalOrPromotionMove(move, self.sideToMove, self.currentContext().movedPiece, self.currentContext().capturedPiece);
+                self.board.makeOrUnmakeNormalOrPromotionMove(
+                    move,
+                    self.sideToMove,
+                    self.currentContext().movedPiece,
+                    self.currentContext().capturedPiece,
+                );
 
                 if (self.currentContext().capturedPiece != Piece.Null) {
                     self.currentContextMut().halfmoveClock = 0;
@@ -214,6 +214,8 @@ pub const Position = struct {
         self.halfmove += 1;
 
         self.updateCheckInfo();
+
+        self.validate();
     }
 
     pub fn updateCheckInfo(self: *Position) void {
@@ -254,11 +256,6 @@ pub const Position = struct {
     pub fn unmakeMove(self: *Position, move: Move) PositionError!void {
         if (self.depth() == 0) return PositionError.CannotUnmakeAtRoot;
 
-        const movedPiece = self.currentContext().movedPiece;
-        const capturedPiece = self.currentContext().capturedPiece;
-
-        _ = self.contexts.pop();
-
         self.sideToMove = self.sideToMove.other();
         self.halfmove -= 1;
 
@@ -270,9 +267,18 @@ pub const Position = struct {
                 self.board.makeOrUnmakeEnPassantMove(move, self.sideToMove);
             },
             else => {
-                self.board.makeOrUnmakeNormalOrPromotionMove(move, self.sideToMove, movedPiece, capturedPiece);
+                self.board.makeOrUnmakeNormalOrPromotionMove(
+                    move,
+                    self.sideToMove,
+                    self.currentContext().movedPiece,
+                    self.currentContext().capturedPiece,
+                );
             },
         }
+
+        _ = self.contexts.pop();
+
+        self.validate();
     }
 
     /// Perft (perft function): counts leaf nodes at given depth.
