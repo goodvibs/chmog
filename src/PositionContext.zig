@@ -26,7 +26,7 @@ pub const PositionContext = struct {
     // zero indicates it has never been repeated
     repetition: i10,
 
-    /// Asserts context invariants. Call in debug builds.
+    /// Asserts context invariants.
     pub fn validate(self: *const PositionContext) void {
         assert(self.checkers != ~@as(Bitboard, 0));
         assert(@popCount(self.checkers) <= 2);

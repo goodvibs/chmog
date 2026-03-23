@@ -3,6 +3,7 @@
 const std = @import("std");
 const assert = @import("std").debug.assert;
 const ArrayList = @import("std").ArrayList;
+const Allocator = @import("std").mem.Allocator;
 const Move = @import("./root.zig").Move;
 const MoveFlag = @import("./root.zig").MoveFlag;
 const Bitboard = @import("./root.zig").Bitboard;
@@ -58,7 +59,7 @@ pub const Position = struct {
     }
 
     /// Creates the standard starting position. contextsCapacity: hint for move history.
-    pub fn initial(allocator: std.mem.Allocator, contextsCapacity: usize) !Position {
+    pub fn initial(allocator: std.mem.Allocator, contextsCapacity: usize) Allocator.Error!Position {
         var contexts = try ArrayList(PositionContext).initCapacity(allocator, contextsCapacity);
         try contexts.append(allocator, PositionContext{
             .checkers = 0,
@@ -86,7 +87,7 @@ pub const Position = struct {
         return pos;
     }
 
-    /// Asserts current context invariants. Call in debug builds.
+    /// Asserts current context invariants.
     pub fn validateCurrentContext(self: *const Position) void {
         self.currentContext().validate();
 
@@ -115,17 +116,6 @@ pub const Position = struct {
         assert(@abs(self.currentContext().repetition) <= self.halfmove);
     }
 
-    /// Asserts board and context invariants. Call in debug builds.
-    pub fn validate(self: *const Position) void {
-        self.board.validate();
-        self.currentContext().validate();
-        self.validateCurrentContext();
-        for (self.contexts.items) |context| {
-            context.validate();
-        }
-        assert(self.doHalfmoveAndSideToMoveAgree());
-    }
-
     /// Returns true if halfmove count is consistent with side to move.
     pub fn doHalfmoveAndSideToMoveAgree(self: *const Position) bool {
         const isEven = self.halfmove % 2 == 0;
@@ -143,8 +133,23 @@ pub const Position = struct {
         return !self.board.isColorInCheck(self.sideToMove.other());
     }
 
+    /// Asserts board and context invariants.
+    pub fn validate(self: *const Position) void {
+        self.board.validate();
+        self.currentContext().validate();
+        self.validateCurrentContext();
+        for (self.contexts.items) |context| {
+            context.validate();
+        }
+        assert(self.doHalfmoveAndSideToMoveAgree());
+        assert(self.isHalfmoveClockPlausible());
+        assert(self.isNotInIllegalCheck());
+    }
+
     /// Applies the move and advances the position. Allocator used for context stack.
     pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) !void {
+        self.validate();
+
         try self.contexts.append(allocator, self.contexts.items[self.depth()]);
 
         self.currentContextMut().halfmoveClock += 1;
@@ -219,6 +224,8 @@ pub const Position = struct {
     }
 
     pub fn updateCheckInfo(self: *Position) void {
+        self.validate();
+
         self.currentContextMut().checkers = 0;
         self.currentContextMut().pinners = 0;
         self.currentContextMut().checkBlockers = 0;
@@ -254,6 +261,8 @@ pub const Position = struct {
 
     /// Reverts the move. Returns PositionError.CannotUnmakeAtRoot if at root.
     pub fn unmakeMove(self: *Position, move: Move) PositionError!void {
+        self.validate();
+
         if (self.depth() == 0) return PositionError.CannotUnmakeAtRoot;
 
         self.sideToMove = self.sideToMove.other();

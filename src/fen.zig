@@ -289,6 +289,14 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
         .sideToMove = turn,
     };
 
+    if (!pos.board.hasOneKingPerColor()) {
+        return FenError.NotOneKingPerColor;
+    }
+
+    if (!pos.board.hasNoPawnsInFirstNorLastRank()) {
+        return FenError.PawnsInFirstOrLastRank;
+    }
+
     pos.board.validate();
 
     if (!pos.doHalfmoveAndSideToMoveAgree()) {
@@ -297,14 +305,6 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 
     if (!pos.isHalfmoveClockPlausible()) {
         return FenError.HalfmoveClockMoreThanHalfmovesPlayed;
-    }
-
-    if (!pos.board.hasNoPawnsInFirstNorLastRank()) {
-        return FenError.PawnsInFirstOrLastRank;
-    }
-
-    if (!pos.board.hasOneKingPerColor()) {
-        return FenError.NotOneKingPerColor;
     }
 
     if (!pos.isNotInIllegalCheck()) {

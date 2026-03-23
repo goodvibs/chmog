@@ -4,7 +4,10 @@ const std = @import("std");
 const chmog = @import("chmog");
 const Position = chmog.Position;
 const PositionContext = chmog.PositionContext;
+const FenError = chmog.FenError;
 const parseFen = chmog.fen.parseFen;
+
+const PositionInitError = FenError || std.mem.Allocator.Error;
 
 const NodeCountLookups = struct {
     const INITIAL_POSITION = [_]u64{
@@ -61,16 +64,16 @@ fn runPerftTest(allocator: std.mem.Allocator, position: *Position, depth: u8, ex
     try std.testing.expectEqual(expected_nodes, nodes);
 }
 
-fn fenPositionConstructor(comptime fen: []const u8) *const fn (std.mem.Allocator, usize) anyerror!Position {
+fn fenPositionConstructor(comptime fen: []const u8) *const fn (std.mem.Allocator, usize) PositionInitError!Position {
     return struct {
-        fn call(alloc: std.mem.Allocator, cap: usize) anyerror!Position {
+        fn call(alloc: std.mem.Allocator, cap: usize) PositionInitError!Position {
             return parseFen(fen, alloc, cap);
         }
     }.call;
 }
 
 fn runPerftTestCase(
-    comptime createPosition: *const fn (std.mem.Allocator, usize) anyerror!Position,
+    comptime createPosition: *const fn (std.mem.Allocator, usize) PositionInitError!Position,
     comptime depth: u8,
     comptime nodeCountLookup: anytype,
 ) !void {

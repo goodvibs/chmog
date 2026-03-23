@@ -80,13 +80,6 @@ pub const Board = struct {
         return pieceMasksUnion == self.occupiedMask();
     }
 
-    /// Asserts board invariants hold. Call in debug builds.
-    pub fn validate(self: *const Board) void {
-        assert(self.doColorMasksUnionToOccupiedMask());
-        assert(self.doColorMasksNotConflict());
-        assert(self.arePieceMasksValid());
-    }
-
     /// Returns true if each color has exactly one king.
     pub fn hasOneKingPerColor(self: *const Board) bool {
         const kingsMask = self.pieceMask(Piece.King);
@@ -97,6 +90,14 @@ pub const Board = struct {
     /// Returns true if no pawns are on rank 1 or 8.
     pub fn hasNoPawnsInFirstNorLastRank(self: *const Board) bool {
         return self.pieceMask(Piece.Pawn) & (masks.RANK_1 | masks.RANK_8) == 0;
+    }
+
+    /// Asserts board invariants hold.
+    pub fn validate(self: *const Board) void {
+        assert(self.doColorMasksUnionToOccupiedMask());
+        assert(self.doColorMasksNotConflict());
+        assert(self.arePieceMasksValid());
+        assert(self.hasOneKingPerColor());
     }
 
     /// Returns true if the given color's king is attacked.
@@ -447,9 +448,14 @@ test "board validate does not panic" {
     Board.initial().validate();
 
     var board = Board.blank();
+    // White king
     board.xorPieceMask(Piece.King, Square.E1.mask());
     board.xorColorMask(Color.White, Square.E1.mask());
     board.xorOccupiedMask(Square.E1.mask());
+    // Black king (required by hasOneKingPerColor)
+    board.xorPieceMask(Piece.King, Square.E8.mask());
+    board.xorColorMask(Color.Black, Square.E8.mask());
+    board.xorOccupiedMask(Square.E8.mask());
     board.validate();
 }
 
@@ -482,6 +488,11 @@ test "board makeOrUnmakeEnPassantMove" {
     board.xorColorMask(Color.White, Square.E5.mask());
     board.xorColorMask(Color.Black, Square.D5.mask());
     board.xorOccupiedMask(Square.E5.mask() | Square.D5.mask());
+    // Kings required by hasOneKingPerColor
+    board.xorPieceMask(Piece.King, Square.A1.mask() | Square.A8.mask());
+    board.xorColorMask(Color.White, Square.A1.mask());
+    board.xorColorMask(Color.Black, Square.A8.mask());
+    board.xorOccupiedMask(Square.A1.mask() | Square.A8.mask());
 
     const originalOccupied = board.occupiedMask();
     const originalPawnMask = board.pieceMask(Piece.Pawn);
@@ -509,9 +520,10 @@ test "board makeOrUnmakeNormalOrPromotionMove" {
     var captureBoard = Board.blank();
     captureBoard.xorPieceMask(Piece.Rook, Square.E1.mask());
     captureBoard.xorPieceMask(Piece.Pawn, Square.E7.mask());
-    captureBoard.xorColorMask(Color.White, Square.E1.mask());
-    captureBoard.xorColorMask(Color.Black, Square.E7.mask());
-    captureBoard.xorOccupiedMask(Square.E1.mask() | Square.E7.mask());
+    captureBoard.xorPieceMask(Piece.King, Square.A1.mask() | Square.A8.mask());
+    captureBoard.xorColorMask(Color.White, Square.E1.mask() | Square.A1.mask());
+    captureBoard.xorColorMask(Color.Black, Square.E7.mask() | Square.A8.mask());
+    captureBoard.xorOccupiedMask(Square.E1.mask() | Square.E7.mask() | Square.A1.mask() | Square.A8.mask());
     const captureOriginalOccupied = captureBoard.occupiedMask();
     const captureMove = Move.newNonPromotion(Square.E1, Square.E7, MoveFlag.Normal) catch unreachable;
     captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
@@ -522,8 +534,10 @@ test "board makeOrUnmakeNormalOrPromotionMove" {
     // Promotion: e7 to e8
     var promoBoard = Board.blank();
     promoBoard.xorPieceMask(Piece.Pawn, Square.E7.mask());
-    promoBoard.xorColorMask(Color.White, Square.E7.mask());
-    promoBoard.xorOccupiedMask(Square.E7.mask());
+    promoBoard.xorPieceMask(Piece.King, Square.A1.mask() | Square.A8.mask());
+    promoBoard.xorColorMask(Color.White, Square.E7.mask() | Square.A1.mask());
+    promoBoard.xorColorMask(Color.Black, Square.A8.mask());
+    promoBoard.xorOccupiedMask(Square.E7.mask() | Square.A1.mask() | Square.A8.mask());
     const promoOriginalOccupied = promoBoard.occupiedMask();
     const promoMove = Move.newPromotion(Square.E7, Square.E8, PromotionPiece.Queen);
     promoBoard.makeOrUnmakeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
