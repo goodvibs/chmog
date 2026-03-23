@@ -224,11 +224,11 @@ pub const Position = struct {
     }
 
     pub fn updateCheckInfo(self: *Position) void {
-        self.validate();
-
         self.currentContextMut().checkers = 0;
         self.currentContextMut().pinners = 0;
         self.currentContextMut().checkBlockers = 0;
+
+        self.validate();
 
         const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
 
@@ -238,7 +238,13 @@ pub const Position = struct {
         const currentSideKingDiagonals = kingSquare.diagonalsMask();
         const currentSideKingOrthogonals = kingSquare.orthogonalsMask();
 
-        const slidingThreats = ((diagonalSliders & currentSideKingDiagonals) | (orthogonalSliders & currentSideKingOrthogonals)) & self.board.colorMask(self.sideToMove.other());
+        const opponentPieces = self.board.colorMask(self.sideToMove.other());
+
+        const knightCheckers = knightAttacks(kingSquare) & self.board.pieceMask(Piece.Knight) & opponentPieces;
+        const pawnCheckers = pawnsAttacks(kingSquare.mask(), self.sideToMove) & self.board.pieceMask(Piece.Pawn) & opponentPieces;
+        self.currentContextMut().checkers |= knightCheckers | pawnCheckers;
+
+        const slidingThreats = ((diagonalSliders & currentSideKingDiagonals) | (orthogonalSliders & currentSideKingOrthogonals)) & opponentPieces;
         var slidingThreatMasksIter = iterSetBits(slidingThreats);
 
         while (slidingThreatMasksIter.next()) |attackingSliderMask| {
