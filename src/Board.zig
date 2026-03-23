@@ -466,19 +466,19 @@ test "board hasOneKingPerColor and hasNoPawnsInFirstNorLastRank" {
 }
 
 test "board makeOrUnmakeCastlingMove" {
-    var board = Board.initial();
-    const originalOccupied = board.occupiedMask();
-    const originalKingMask = board.pieceMask(Piece.King);
-    const originalRookMask = board.pieceMask(Piece.Rook);
+    var board = Board.blank();
+    board.xorPieceMask(Piece.King, Square.E1.mask() | Square.E8.mask());
+    board.xorPieceMask(Piece.Rook, Square.A1.mask() | Square.H1.mask());
+    board.xorColorMask(Color.White, Square.E1.mask() | Square.A1.mask() | Square.H1.mask());
+    board.xorColorMask(Color.Black, Square.E8.mask());
+
+    const boardCopy = board;
 
     const move = Move.castling(Flank.Kingside, Color.White);
     board.makeOrUnmakeCastlingMove(move, Color.White);
     board.makeOrUnmakeCastlingMove(move, Color.White);
 
-    try testing.expectEqual(originalOccupied, board.occupiedMask());
-    try testing.expectEqual(originalKingMask, board.pieceMask(Piece.King));
-    try testing.expectEqual(originalRookMask, board.pieceMask(Piece.Rook));
-    board.validate();
+    try testing.expectEqual(boardCopy, board);
 }
 
 test "board makeOrUnmakeEnPassantMove" {
