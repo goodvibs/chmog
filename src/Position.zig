@@ -147,7 +147,7 @@ pub const Position = struct {
     }
 
     /// Applies the move and advances the position. Allocator used for context stack.
-    pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) !void {
+    pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) Allocator.Error!void {
         self.validate();
 
         try self.contexts.append(allocator, self.contexts.items[self.depth()]);
