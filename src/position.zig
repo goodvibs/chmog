@@ -200,7 +200,11 @@ pub const Position = struct {
                 switch (self.currentContext().movedPiece) {
                     .Pawn => {
                         self.currentContextMut().halfmoveClock = 0;
-                        if (abs(move.from.int(), move.to.int()) == 16) {
+                        // Two steps along one file in rank-major square index (double push).
+                        const double_pawn_push_index_delta: u6 = 16;
+                        const from_i = move.from.int();
+                        const to_i = move.to.int();
+                        if (@max(from_i, to_i) - @min(from_i, to_i) == double_pawn_push_index_delta) {
                             self.currentContextMut().doublePawnPushFile = move.from.file();
                         }
                     },
@@ -315,6 +319,19 @@ pub const Position = struct {
         return nodes;
     }
 
+    /// Drops pseudo-legal moves that are illegal (swap-remove in place).
+    fn compactLegalInPlace(self: *const Position, moves: [*]Move, nextMovesPtr: [*]Move) [*]Move {
+        var lastMovePtr = nextMovesPtr - 1;
+        var movesPtr = lastMovePtr;
+        while (@intFromPtr(movesPtr) >= @intFromPtr(moves)) : (movesPtr -= 1) {
+            if (!self.isPseudoLegalMoveLegal(movesPtr[0])) {
+                movesPtr[0] = lastMovePtr[0];
+                lastMovePtr -= 1;
+            }
+        }
+        return lastMovePtr + 1;
+    }
+
     /// Fills the moves buffer with legal moves and returns a pointer past the last move.
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
         var nextMovesPtr = moves;
@@ -347,7 +364,7 @@ pub const Position = struct {
             }
         };
         if (!isInDoubleCheck) {
-            nextMovesPtr = self.genPseudoLegalPawnMoves(true, allowedDests, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalPawnMoves(allowedDests, nextMovesPtr);
             nextMovesPtr = self.genPseudoLegalMovesFromAttacks(knightAttacks, knights, allowedDests, nextMovesPtr);
             nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingBishopAttacks, diagonalPieces, allowedDests, nextMovesPtr);
             nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingRookAttacks, orthogonalPieces, allowedDests, nextMovesPtr);
@@ -361,16 +378,7 @@ pub const Position = struct {
 
         if (nextMovesPtr == moves) return moves;
 
-        var lastMovePtr = nextMovesPtr - 1;
-        var movesPtr = lastMovePtr;
-        while (@intFromPtr(movesPtr) >= @intFromPtr(moves)) : (movesPtr -= 1) {
-            if (!self.isPseudoLegalMoveLegal(movesPtr[0])) {
-                movesPtr[0] = lastMovePtr[0];
-                lastMovePtr -= 1;
-            }
-        }
-
-        return lastMovePtr + 1;
+        return self.compactLegalInPlace(moves, nextMovesPtr);
     }
 
     pub fn isPseudoLegalMoveLegal(self: *const Position, move: Move) bool {
@@ -438,7 +446,7 @@ pub const Position = struct {
         return nextMovesPtr;
     }
 
-    fn genPseudoLegalPawnMoves(self: *const Position, comptime includeEnPassant: bool, allowedDests: Bitboard, moves: [*]Move) [*]Move {
+    fn genPseudoLegalPawnMoves(self: *const Position, allowedDests: Bitboard, moves: [*]Move) [*]Move {
         var nextMovesPtr = moves;
         const occupied = self.board.occupiedMask();
         const enemies = self.board.colorMask(self.sideToMove.other());
@@ -448,16 +456,16 @@ pub const Position = struct {
         const doublePawnPushMask = Rank.Three.fromPerspective(self.sideToMove).mask();
 
         const down: i7 = switch (self.sideToMove) {
-            .White => 8,
-            .Black => -8,
+            .White => Square.DELTA_DOWN,
+            .Black => Square.DELTA_UP,
         };
         const downRight: i7 = switch (self.sideToMove) {
-            .White => 9,
-            .Black => -9,
+            .White => Square.DELTA_DOWN + Square.DELTA_RIGHT,
+            .Black => Square.DELTA_UP + Square.DELTA_LEFT,
         };
         const downLeft: i7 = switch (self.sideToMove) {
-            .White => 7,
-            .Black => -7,
+            .White => Square.DELTA_DOWN + Square.DELTA_LEFT,
+            .Black => Square.DELTA_UP + Square.DELTA_RIGHT,
         };
 
         var singlePushes = pawnsPushes(pawns, self.sideToMove) & ~occupied;
@@ -477,21 +485,17 @@ pub const Position = struct {
         nextMovesPtr = splatPawnMoves(false, downRight, capturesLeft & ~promotionRankMask, nextMovesPtr);
         nextMovesPtr = splatPawnMoves(false, downLeft, capturesRight & ~promotionRankMask, nextMovesPtr);
 
-        if (includeEnPassant) {
-            if (self.currentContext().doublePawnPushFile) |file| {
-                const captureRank = self.sideToMove.enPassantDestRank();
-                const captureMask = captureRank.mask() & file.mask();
-                const captureSquare = Square.fromMask(captureMask) catch unreachable;
-                var sourcesMask = pawnsAttacks(captureMask, self.sideToMove.other()) & self.board.colorMask(self.sideToMove);
-                for (0..2) |_| {
-                    if (sourcesMask != 0) {
-                        const sourceMask = lsbMask(sourcesMask);
-                        const sourceSquare = Square.fromMask(sourceMask) catch unreachable;
-                        sourcesMask ^= sourceMask;
-                        nextMovesPtr[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant) catch unreachable;
-                        nextMovesPtr += 1;
-                    }
-                }
+        if (self.currentContext().doublePawnPushFile) |file| {
+            const captureRank = self.sideToMove.enPassantDestRank();
+            const captureMask = captureRank.mask() & file.mask();
+            const captureSquare = Square.fromMask(captureMask) catch unreachable;
+            var sourcesMask = pawnsAttacks(captureMask, self.sideToMove.other()) & self.board.colorMask(self.sideToMove);
+            while (sourcesMask != 0) {
+                const sourceMask = lsbMask(sourcesMask);
+                const sourceSquare = Square.fromMask(sourceMask) catch unreachable;
+                sourcesMask ^= sourceMask;
+                nextMovesPtr[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant) catch unreachable;
+                nextMovesPtr += 1;
             }
         }
 
@@ -550,11 +554,6 @@ pub const Position = struct {
     }
 };
 
-/// Returns the bitboard of squares the rook moves through when castling on the given flank and color.
-fn castlingRookMoveMask(flank: Flank, color: Color) Bitboard {
-    return flank.castlingRookFilesMask() & color.backRank().mask();
-}
-
 fn splatPawnMoves(comptime arePromotions: bool, fromOffset: i7, to: Bitboard, moves: [*]Move) [*]Move {
     var nextMovesPtr = moves;
     var iter = iterSetBits(to);
@@ -590,9 +589,4 @@ fn splatMoves(from: Square, to: Bitboard, moves: [*]Move) [*]Move {
         nextMovesPtr += 1;
     }
     return nextMovesPtr;
-}
-
-/// Returns the absolute difference between two values.
-fn abs(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
-    return @max(a, b) - @min(a, b);
 }
