@@ -302,29 +302,42 @@ pub const Position = struct {
 
     /// Perft (perft function): counts leaf nodes at given depth.
     /// Depth 0 returns 1. Depth 1 returns number of legal moves.
-    pub fn perft(self: *Position, allocator: std.mem.Allocator, target_depth: u8) !u64 {
-        if (target_depth == 0) return 1;
+    pub fn perft(self: *Position, allocator: std.mem.Allocator, targetDepth: u8) !u64 {
+        if (targetDepth == 0) return 1;
 
         var moves: [256]Move = undefined;
-        const end_ptr = self.genLegalMoves(&moves);
-        const num_moves = end_ptr - moves[0..].ptr;
+        const endPtr = self.genLegalMoves(&moves);
+        const numMoves = endPtr - moves[0..].ptr;
 
         var nodes: u64 = 0;
         var i: usize = 0;
-        while (i < num_moves) : (i += 1) {
+        while (i < numMoves) : (i += 1) {
             try self.makeMove(allocator, moves[i]);
-            nodes += try self.perft(allocator, target_depth - 1);
+            nodes += try self.perft(allocator, targetDepth - 1);
             self.unmakeMove(moves[i]) catch unreachable;
         }
         return nodes;
     }
 
     /// Drops pseudo-legal moves that are illegal (swap-remove in place).
+    /// Only runs full legality for moves that need it:
+    /// from a pinned square, king moves (including castling), or en passant.
     fn compactLegalInPlace(self: *const Position, moves: [*]Move, nextMovesPtr: [*]Move) [*]Move {
+        const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+
         var lastMovePtr = nextMovesPtr - 1;
         var movesPtr = lastMovePtr;
+
         while (@intFromPtr(movesPtr) >= @intFromPtr(moves)) : (movesPtr -= 1) {
-            if (!self.isPseudoLegalMoveLegal(movesPtr[0])) {
+            const move = movesPtr[0];
+
+            const legal = if (!doesMoveNeedLegalityCheck(
+                move,
+                self.currentContext().checkBlockers,
+                kingSquare,
+            )) true else self.isPseudoLegalMoveLegal(move);
+
+            if (!legal) {
                 movesPtr[0] = lastMovePtr[0];
                 lastMovePtr -= 1;
             }
@@ -589,4 +602,8 @@ fn splatMoves(from: Square, to: Bitboard, moves: [*]Move) [*]Move {
         nextMovesPtr += 1;
     }
     return nextMovesPtr;
+}
+
+fn doesMoveNeedLegalityCheck(move: Move, checkBlockers: Bitboard, kingSquare: Square) bool {
+    return move.flag == MoveFlag.EnPassant or checkBlockers & move.from.mask() != 0 or move.from == kingSquare;
 }
