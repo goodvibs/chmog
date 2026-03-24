@@ -91,6 +91,11 @@ pub const Square = enum(u6) {
         [2]u8{ 'a', '1' }, [2]u8{ 'b', '1' }, [2]u8{ 'c', '1' }, [2]u8{ 'd', '1' }, [2]u8{ 'e', '1' }, [2]u8{ 'f', '1' }, [2]u8{ 'g', '1' }, [2]u8{ 'h', '1' },
     };
 
+    pub const DELTA_UP: i7 = -8;
+    pub const DELTA_DOWN: i7 = 8;
+    pub const DELTA_RIGHT: i7 = 1;
+    pub const DELTA_LEFT: i7 = -1;
+
     /// Creates square from 0-63 index (a8=0, h1=63).
     pub fn fromInt(index: u6) Square {
         return @enumFromInt(index);
@@ -147,48 +152,56 @@ pub const Square = enum(u6) {
         return 7 - self.file().int();
     }
 
+    pub fn relative(self: Square, delta: i7) ?Square {
+        const sum = @as(i8, self.int()) + delta;
+        if (sum >= 0 and sum <= 63) {
+            const unsignedSum: u8 = @bitCast(sum);
+            return Square.fromInt(@truncate(unsignedSum));
+        } else return null;
+    }
+
     /// Returns the square one rank toward 8, or null at edge.
     pub fn up(self: Square) ?Square {
-        if (self.rank() == Rank.Eight) return null;
-        return Square.fromInt(self.int() - 8);
+        if (self.rank() == .Eight) return null;
+        return self.relative(Square.DELTA_UP);
     }
 
     /// Returns the square one rank toward 1, or null at edge.
     pub fn down(self: Square) ?Square {
-        if (self.rank() == Rank.One) return null;
-        return Square.fromInt(self.int() + 8);
+        if (self.rank() == .One) return null;
+        return self.relative(Square.DELTA_DOWN);
     }
 
     /// Returns the square one file toward A, or null at edge.
     pub fn left(self: Square) ?Square {
-        if (self.file() == File.A) return null;
-        return Square.fromInt(self.int() - 1);
+        if (self.file() == .A) return null;
+        return self.relative(Square.DELTA_LEFT);
     }
 
     /// Returns the square one file toward H, or null at edge.
     pub fn right(self: Square) ?Square {
-        if (self.file() == File.H) return null;
-        return Square.fromInt(self.int() + 1);
+        if (self.file() == .H) return null;
+        return self.relative(Square.DELTA_RIGHT);
     }
 
     pub fn upLeft(self: Square) ?Square {
-        if (self.file() == File.A or self.rank() == Rank.Eight) return null;
-        return Square.fromInt(self.int() - 9);
+        if (self.rank() == .Eight or self.file() == .A) return null;
+        return self.relative(Square.DELTA_UP + Square.DELTA_LEFT);
     }
 
     pub fn upRight(self: Square) ?Square {
-        if (self.file() == File.H or self.rank() == Rank.Eight) return null;
-        return Square.fromInt(self.int() - 7);
+        if (self.rank() == .Eight or self.file() == .H) return null;
+        return self.relative(Square.DELTA_UP + Square.DELTA_RIGHT);
     }
 
     pub fn downLeft(self: Square) ?Square {
-        if (self.file() == File.A or self.rank() == Rank.One) return null;
-        return Square.fromInt(self.int() + 7);
+        if (self.rank() == .One or self.file() == .A) return null;
+        return self.relative(Square.DELTA_DOWN + Square.DELTA_LEFT);
     }
 
     pub fn downRight(self: Square) ?Square {
-        if (self.file() == File.H or self.rank() == Rank.One) return null;
-        return Square.fromInt(self.int() + 9);
+        if (self.rank() == .One or self.file() == .H) return null;
+        return self.relative(Square.DELTA_DOWN + Square.DELTA_RIGHT);
     }
 
     /// Returns the adjacent square in the given direction, or null at edge.
@@ -344,6 +357,12 @@ test "square movement" {
     try testing.expectEqual(Square.B7, Square.A8.down().?.right().?);
     try testing.expectEqual(@as(?Square, null), Square.A8.upRight());
     try testing.expectEqual(@as(?Square, null), Square.A8.downLeft());
+
+    // Rank-major index must not wrap across files/ranks.
+    try testing.expectEqual(@as(?Square, null), Square.H4.right());
+    try testing.expectEqual(@as(?Square, null), Square.A4.left());
+    try testing.expectEqual(@as(?Square, null), Square.A4.upLeft());
+    try testing.expectEqual(@as(?Square, null), Square.H4.upRight());
 }
 
 test "square name and fromName" {
