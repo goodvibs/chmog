@@ -348,6 +348,7 @@ pub const Position = struct {
     /// Fills the moves buffer with legal moves and returns a pointer past the last move.
     pub fn genLegalMoves(self: *const Position, moves: [*]Move) [*]Move {
         var nextMovesPtr = moves;
+        const enemyKingMask = self.board.mask(Piece.King, self.sideToMove.other());
         const currentSidePieces = self.board.colorMask(self.sideToMove);
 
         const knights = self.board.pieceMask(Piece.Knight) & currentSidePieces;
@@ -377,17 +378,17 @@ pub const Position = struct {
             }
         };
         if (!isInDoubleCheck) {
-            nextMovesPtr = self.genPseudoLegalPawnMoves(allowedDests, nextMovesPtr);
-            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(knightAttacks, knights, allowedDests, nextMovesPtr);
-            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingBishopAttacks, diagonalPieces, allowedDests, nextMovesPtr);
-            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingRookAttacks, orthogonalPieces, allowedDests, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalPawnMoves(allowedDests, enemyKingMask, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(knightAttacks, knights, allowedDests, enemyKingMask, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingBishopAttacks, diagonalPieces, allowedDests, enemyKingMask, nextMovesPtr);
+            nextMovesPtr = self.genPseudoLegalMovesFromAttacks(slidingRookAttacks, orthogonalPieces, allowedDests, enemyKingMask, nextMovesPtr);
 
             if (self.currentContext().checkers == 0) {
                 nextMovesPtr = self.genPseudoLegalCastlingMoves(nextMovesPtr);
             }
         }
 
-        nextMovesPtr = self.genPseudoLegalMovesFromAttacks(kingAttacks, kings, ~@as(Bitboard, 0), nextMovesPtr);
+        nextMovesPtr = self.genPseudoLegalMovesFromAttacks(kingAttacks, kings, ~@as(Bitboard, 0), enemyKingMask, nextMovesPtr);
 
         if (nextMovesPtr == moves) return moves;
 
@@ -435,12 +436,13 @@ pub const Position = struct {
         pieceAttacks: anytype,
         from: Bitboard,
         allowedDests: Bitboard,
+        enemyKingMask: Bitboard,
         moves: [*]Move,
     ) [*]Move {
         var nextMovesPtr = moves;
 
         const occupiedMask = self.board.occupiedMask();
-        const attacksFilter = allowedDests & ~self.board.colorMask(self.sideToMove);
+        const attacksFilter = allowedDests & ~self.board.colorMask(self.sideToMove) & ~enemyKingMask;
 
         var sourceMasksIter = iterSetBits(from);
         while (sourceMasksIter.next()) |sourceMask| {
@@ -459,11 +461,10 @@ pub const Position = struct {
         return nextMovesPtr;
     }
 
-    fn genPseudoLegalPawnMoves(self: *const Position, allowedDests: Bitboard, moves: [*]Move) [*]Move {
+    fn genPseudoLegalPawnMoves(self: *const Position, allowedDests: Bitboard, enemyKingMask: Bitboard, moves: [*]Move) [*]Move {
         var nextMovesPtr = moves;
         const occupied = self.board.occupiedMask();
-        const enemies = self.board.colorMask(self.sideToMove.other());
-
+        const enemies = self.board.colorMask(self.sideToMove.other()) & ~enemyKingMask;
         const pawns = self.board.mask(Piece.Pawn, self.sideToMove);
         const promotionRankMask = Rank.Eight.fromPerspective(self.sideToMove).mask();
         const doublePawnPushMask = Rank.Three.fromPerspective(self.sideToMove).mask();
@@ -502,11 +503,14 @@ pub const Position = struct {
             const captureRank = self.sideToMove.enPassantDestRank();
             const captureMask = captureRank.mask() & file.mask();
             const captureSquare = Square.fromMask(captureMask) catch unreachable;
-            var sourcesMask = pawnsAttacks(captureMask, self.sideToMove.other()) & self.board.colorMask(self.sideToMove);
-            while (sourcesMask != 0) {
-                const sourceMask = lsbMask(sourcesMask);
+            // One bit in captureMask = hypothetical opponent pawn on the EP target; pawnsAttacks(..., .other())
+            // is the reverse map (same idea as Stockfish attacks_bb<PAWN>(ep, Them)).
+            const sourcesMask = self.board.mask(Piece.Pawn, self.sideToMove) & pawnsAttacks(captureMask, self.sideToMove.other());
+            var epSources = sourcesMask;
+            while (epSources != 0) {
+                const sourceMask = lsbMask(epSources);
                 const sourceSquare = Square.fromMask(sourceMask) catch unreachable;
-                sourcesMask ^= sourceMask;
+                epSources ^= sourceMask;
                 nextMovesPtr[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant) catch unreachable;
                 nextMovesPtr += 1;
             }
