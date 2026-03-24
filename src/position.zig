@@ -560,11 +560,7 @@ fn splatPawnMoves(comptime arePromotions: bool, fromOffset: i7, to: Bitboard, mo
     var iter = iterSetBits(to);
     while (iter.next()) |destMask| {
         const dest = Square.fromMask(destMask) catch unreachable;
-        const fromIntSigned = @as(i8, dest.int()) + fromOffset;
-        assert(fromIntSigned >= 0);
-        const fromIntUnsigned: u8 = @bitCast(fromIntSigned);
-        assert(fromIntUnsigned <= ~@as(u6, 0));
-        const from = Square.fromInt(@truncate(fromIntUnsigned));
+        const from = dest.relative(fromOffset) orelse unreachable;
         if (arePromotions) {
             nextMovesPtr[0..4].* = generatePawnPromotions(from, dest);
             nextMovesPtr += 4;
