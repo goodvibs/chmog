@@ -9,7 +9,6 @@ const assert = @import("std").debug.assert;
 const Move = @import("./root.zig").Move;
 const MoveFlag = @import("./root.zig").MoveFlag;
 const Bitboard = @import("./root.zig").Bitboard;
-const masks = @import("./root.zig").masks;
 const Piece = @import("./root.zig").Piece;
 const PromotionPiece = @import("./root.zig").PromotionPiece;
 const Color = @import("./root.zig").Color;
@@ -42,19 +41,40 @@ pub const Board = struct {
 
     /// Returns the standard starting position.
     pub fn initial() Board {
+        const starting_wp = Rank.Two.mask();
+        const starting_bp = Rank.Seven.mask();
+        const starting_wn = Square.B1.mask() | Square.G1.mask();
+        const starting_wb = Square.C1.mask() | Square.F1.mask();
+        const starting_wr = Square.A1.mask() | Square.H1.mask();
+        const starting_wq = Square.D1.mask();
+        const starting_wk = Square.E1.mask();
+        const starting_bn = Square.B8.mask() | Square.G8.mask();
+        const starting_bb = Square.C8.mask() | Square.F8.mask();
+        const starting_br = Square.A8.mask() | Square.H8.mask();
+        const starting_bq = Square.D8.mask();
+        const starting_bk = Square.E8.mask();
+        const starting_pawns = starting_wp | starting_bp;
+        const starting_knights = starting_wn | starting_bn;
+        const starting_bishops = starting_wb | starting_bb;
+        const starting_rooks = starting_wr | starting_br;
+        const starting_queens = starting_wq | starting_bq;
+        const starting_kings = starting_wk | starting_bk;
+        const starting_white = starting_wp | starting_wn | starting_wb | starting_wr | starting_wq | starting_wk;
+        const starting_black = starting_bp | starting_bn | starting_bb | starting_br | starting_bq | starting_bk;
+        const starting_all = starting_white | starting_black;
         const res = Board{
             .pieceMasks = [7]Bitboard{
-                masks.STARTING_ALL,
-                masks.STARTING_PAWNS,
-                masks.STARTING_KNIGHTS,
-                masks.STARTING_BISHOPS,
-                masks.STARTING_ROOKS,
-                masks.STARTING_QUEENS,
-                masks.STARTING_KINGS,
+                starting_all,
+                starting_pawns,
+                starting_knights,
+                starting_bishops,
+                starting_rooks,
+                starting_queens,
+                starting_kings,
             },
             .colorMasks = [2]Bitboard{
-                masks.STARTING_WHITE,
-                masks.STARTING_BLACK,
+                starting_white,
+                starting_black,
             },
         };
         return res;
@@ -89,7 +109,7 @@ pub const Board = struct {
     }
     /// Returns true if no pawns are on rank 1 or 8.
     pub fn hasNoPawnsInFirstNorLastRank(self: *const Board) bool {
-        return self.pieceMask(Piece.Pawn) & (masks.RANK_1 | masks.RANK_8) == 0;
+        return self.pieceMask(Piece.Pawn) & (Rank.One.mask() | Rank.Eight.mask()) == 0;
     }
 
     /// Asserts board invariants hold.

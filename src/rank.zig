@@ -2,7 +2,6 @@
 
 const Bitboard = @import("./root.zig").Bitboard;
 const Color = @import("./root.zig").Color;
-const masks = @import("./root.zig").masks;
 
 /// Rank errors: InvalidRankChar, RankOutOfBounds.
 pub const RankError = error{
@@ -33,7 +32,8 @@ pub const Rank = enum(u3) {
 
     /// Returns the bitboard of all squares in this rank.
     pub fn mask(self: Rank) Bitboard {
-        return masks.RANKS[@as(usize, self.int())];
+        const rank_8: Bitboard = 0xFF_00_00_00_00_00_00_00;
+        return rank_8 >> (@as(u6, self.int()) * 8);
     }
 
     /// Returns rank char ('1'-'8').

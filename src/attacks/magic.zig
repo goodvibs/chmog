@@ -6,8 +6,8 @@ const Rank = @import("../root.zig").Rank;
 const Prng = @import("../root.zig").utils.Prng;
 const SquareToBitboard = @import("../root.zig").utils.SquareToBitboard;
 const iterBitCombinations = @import("../root.zig").utils.iterBitCombinations;
+const File = @import("../root.zig").File;
 const manual = @import("../root.zig").attacks.manual;
-const masks = @import("../root.zig").masks;
 const bytesToValue = @import("std").mem.bytesToValue;
 
 fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (Square) ?Square {
@@ -24,16 +24,16 @@ fn stopIfMask(comptime next: fn (Square) ?Square, comptime mask: Bitboard) fn (S
 /// Computes the relevant occupancy mask for bishop magic bitboards.
 pub fn computeBishopRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
-    return from.diagonalsMask() & ~(from.mask() | masks.FILE_A | masks.FILE_H | masks.RANK_1 | masks.RANK_8);
+    return from.diagonalsMask() & ~(from.mask() | File.A.mask() | File.H.mask() | Rank.One.mask() | Rank.Eight.mask());
 }
 
 /// Computes the relevant occupancy mask for rook magic bitboards.
 pub fn computeRookRelevantMask(from_: [1]Square) Bitboard {
     const from = from_[0];
-    const up = from.buildMask(0, stopIfMask(Square.up, masks.RANK_8));
-    const down = from.buildMask(0, stopIfMask(Square.down, masks.RANK_1));
-    const left = from.buildMask(0, stopIfMask(Square.left, masks.FILE_A));
-    const right = from.buildMask(0, stopIfMask(Square.right, masks.FILE_H));
+    const up = from.buildMask(0, stopIfMask(Square.up, Rank.Eight.mask()));
+    const down = from.buildMask(0, stopIfMask(Square.down, Rank.One.mask()));
+    const left = from.buildMask(0, stopIfMask(Square.left, File.A.mask()));
+    const right = from.buildMask(0, stopIfMask(Square.right, File.H.mask()));
     return up | down | left | right;
 }
 

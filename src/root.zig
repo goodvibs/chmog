@@ -27,7 +27,6 @@ pub const PrngError = @import("utils/prng.zig").PrngError;
 
 pub const attacks = @import("attacks/mod.zig");
 pub const fen = @import("fen.zig");
-pub const masks = @import("masks.zig");
 pub const utils = @import("utils/mod.zig");
 pub const zobrist = @import("zobrist/mod.zig");
 

@@ -1,8 +1,8 @@
 //! Manual attack generation (ray casting, bit shifts).
 
-const masks = @import("../root.zig").masks;
 const Bitboard = @import("../root.zig").Bitboard;
 const Color = @import("../root.zig").Color;
+const File = @import("../root.zig").File;
 const Square = @import("../root.zig").Square;
 
 /// Returns the bitboard of squares pawns can push to (one square forward).
@@ -16,52 +16,52 @@ pub fn pawnsPushes(pawns: Bitboard, by: Color) Bitboard {
 /// Returns the bitboard of squares pawns attack diagonally left.
 pub fn pawnsAttacksLeft(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
-        .White => (pawns << 9) & ~masks.FILE_H,
-        .Black => (pawns >> 9) & ~masks.FILE_A,
+        .White => (pawns << 9) & ~File.H.mask(),
+        .Black => (pawns >> 9) & ~File.A.mask(),
     };
 }
 
 /// Returns the bitboard of squares pawns attack diagonally right.
 pub fn pawnsAttacksRight(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
-        .White => (pawns << 7) & ~masks.FILE_A,
-        .Black => (pawns >> 7) & ~masks.FILE_H,
+        .White => (pawns << 7) & ~File.A.mask(),
+        .Black => (pawns >> 7) & ~File.H.mask(),
     };
 }
 
 /// Returns the bitboard of squares pawns attack (both diagonals).
 pub fn pawnsAttacks(pawns: Bitboard, by: Color) Bitboard {
     return switch (by) {
-        .White => ((pawns << 7) & ~masks.FILE_A) | ((pawns << 9) & ~masks.FILE_H),
-        .Black => ((pawns >> 7) & ~masks.FILE_H) | ((pawns >> 9) & ~masks.FILE_A),
+        .White => ((pawns << 7) & ~File.A.mask()) | ((pawns << 9) & ~File.H.mask()),
+        .Black => ((pawns >> 7) & ~File.H.mask()) | ((pawns >> 9) & ~File.A.mask()),
     };
 }
 
 /// Returns the bitboard of squares knights attack from the given knights mask.
 pub fn knightsAttacks(knights: Bitboard) Bitboard {
-    const twoUpOneLeft = (knights << 17) & ~masks.FILE_H;
-    const twoUpOneRight = (knights << 15) & ~masks.FILE_A;
-    const twoLeftOneUp = (knights << 10) & ~(masks.FILE_G | masks.FILE_H);
-    const twoRightOneUp = (knights << 6) & ~(masks.FILE_A | masks.FILE_B);
+    const twoUpOneLeft = (knights << 17) & ~File.H.mask();
+    const twoUpOneRight = (knights << 15) & ~File.A.mask();
+    const twoLeftOneUp = (knights << 10) & ~(File.G.mask() | File.H.mask());
+    const twoRightOneUp = (knights << 6) & ~(File.A.mask() | File.B.mask());
 
-    const twoDownOneLeft = (knights >> 15) & ~masks.FILE_H;
-    const twoDownOneRight = (knights >> 17) & ~masks.FILE_A;
-    const twoLeftOneDown = (knights >> 6) & ~(masks.FILE_G | masks.FILE_H);
-    const twoRightOneDown = (knights >> 10) & ~(masks.FILE_A | masks.FILE_B);
+    const twoDownOneLeft = (knights >> 15) & ~File.H.mask();
+    const twoDownOneRight = (knights >> 17) & ~File.A.mask();
+    const twoLeftOneDown = (knights >> 6) & ~(File.G.mask() | File.H.mask());
+    const twoRightOneDown = (knights >> 10) & ~(File.A.mask() | File.B.mask());
 
     return twoUpOneLeft | twoUpOneRight | twoLeftOneUp | twoRightOneUp | twoDownOneLeft | twoDownOneRight | twoLeftOneDown | twoRightOneDown;
 }
 
 /// Returns the bitboard of squares kings attack from the given kings mask.
 pub fn kingsAttacks(kings: Bitboard) Bitboard {
-    const upLeft = (kings << 9) & ~masks.FILE_H;
+    const upLeft = (kings << 9) & ~File.H.mask();
     const up = kings << 8;
-    const upRight = (kings << 7) & ~masks.FILE_A;
-    const left = (kings << 1) & ~masks.FILE_H;
-    const right = (kings >> 1) & ~masks.FILE_A;
-    const downLeft = (kings >> 7) & ~masks.FILE_H;
+    const upRight = (kings << 7) & ~File.A.mask();
+    const left = (kings << 1) & ~File.H.mask();
+    const right = (kings >> 1) & ~File.A.mask();
+    const downLeft = (kings >> 7) & ~File.H.mask();
     const down = kings >> 8;
-    const downRight = (kings >> 9) & ~masks.FILE_A;
+    const downRight = (kings >> 9) & ~File.A.mask();
     return upLeft | up | upRight | left | right | downLeft | down | downRight;
 }
 

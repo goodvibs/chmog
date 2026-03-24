@@ -5,7 +5,6 @@ const Color = @import("./root.zig").Color;
 const File = @import("./root.zig").File;
 const Rank = @import("./root.zig").Rank;
 const Square = @import("./root.zig").Square;
-const masks = @import("./root.zig").masks;
 
 /// Represents the kingside (files E-H) or queenside (files A-D) of the board.
 /// Used for castling and other flank-based logic.
@@ -32,8 +31,8 @@ pub const Flank = enum(u1) {
     /// Kingside: E, F, G, H. Queenside: A, B, C, D.
     pub fn mask(self: Flank) Bitboard {
         return switch (self) {
-            .Kingside => masks.KING_SIDE,
-            .Queenside => masks.QUEEN_SIDE,
+            .Kingside => File.E.mask() | File.F.mask() | File.G.mask() | File.H.mask(),
+            .Queenside => File.A.mask() | File.B.mask() | File.C.mask() | File.D.mask(),
         };
     }
 
@@ -82,8 +81,14 @@ test "flank other" {
 }
 
 test "flank mask" {
-    try testing.expectEqual(masks.KING_SIDE, Flank.Kingside.mask());
-    try testing.expectEqual(masks.QUEEN_SIDE, Flank.Queenside.mask());
+    try testing.expectEqual(
+        File.E.mask() | File.F.mask() | File.G.mask() | File.H.mask(),
+        Flank.Kingside.mask(),
+    );
+    try testing.expectEqual(
+        File.A.mask() | File.B.mask() | File.C.mask() | File.D.mask(),
+        Flank.Queenside.mask(),
+    );
 }
 
 test "flank castlingGapMask" {

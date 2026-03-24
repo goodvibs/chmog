@@ -1,7 +1,6 @@
 //! Chess file: a-h (columns).
 
 const Bitboard = @import("./root.zig").Bitboard;
-const masks = @import("./root.zig").masks;
 
 /// File errors: InvalidFileChar, FileOutOfBounds.
 pub const FileError = error{
@@ -32,7 +31,8 @@ pub const File = enum(u3) {
 
     /// Returns the bitboard of all squares in this file.
     pub fn mask(self: File) Bitboard {
-        return masks.FILES[@as(usize, self.int())];
+        const file_a: Bitboard = 0x80_80_80_80_80_80_80_80;
+        return file_a >> @as(u6, self.int());
     }
 
     /// Returns lowercase char ('a'-'h').
