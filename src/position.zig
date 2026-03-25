@@ -161,7 +161,7 @@ pub const Position = struct {
             .Castling => {
                 assert(self.board.mask(Piece.King, self.sideToMove) == move.from.mask());
 
-                self.board.makeOrUnmakeCastlingMove(move, self.sideToMove);
+                self.board.makeCastlingMove(move, self.sideToMove);
 
                 self.currentContextMut().movedPiece = Piece.King;
                 self.currentContextMut().capturedPiece = Piece.Null;
@@ -169,7 +169,7 @@ pub const Position = struct {
                 self.currentContextMut().castlingRights.clearMask(CastlingRights.colorMask(self.sideToMove));
             },
             .EnPassant => {
-                self.board.makeOrUnmakeEnPassantMove(move, self.sideToMove);
+                self.board.makeEnPassantMove(move, self.sideToMove);
 
                 self.currentContextMut().movedPiece = Piece.Pawn;
                 self.currentContextMut().capturedPiece = Piece.Pawn;
@@ -184,7 +184,7 @@ pub const Position = struct {
 
                 self.currentContextMut().capturedPiece = self.board.pieceAtSquare(move.to);
 
-                self.board.makeOrUnmakeNormalOrPromotionMove(
+                self.board.makeNormalOrPromotionMove(
                     move,
                     self.sideToMove,
                     self.currentContext().movedPiece,
@@ -280,13 +280,13 @@ pub const Position = struct {
 
         switch (move.flag) {
             .Castling => {
-                self.board.makeOrUnmakeCastlingMove(move, self.sideToMove);
+                self.board.unmakeCastlingMove(move, self.sideToMove);
             },
             .EnPassant => {
-                self.board.makeOrUnmakeEnPassantMove(move, self.sideToMove);
+                self.board.unmakeEnPassantMove(move, self.sideToMove);
             },
             else => {
-                self.board.makeOrUnmakeNormalOrPromotionMove(
+                self.board.unmakeNormalOrPromotionMove(
                     move,
                     self.sideToMove,
                     self.currentContext().movedPiece,

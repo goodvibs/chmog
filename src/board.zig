@@ -30,12 +30,15 @@ pub const BoardRenderOptions = struct { useAscii: bool = false };
 pub const Board = struct {
     pieceMasks: [7]Bitboard,
     colorMasks: [2]Bitboard,
+    /// Cached piece per square (index `square.int()`), derived from `pieceMasks`; kept in sync by rebuilds.
+    pieces: [64]Piece,
 
     /// Returns an empty board with no pieces.
     pub fn blank() Board {
         return Board{
             .pieceMasks = mem.zeroes([7]Bitboard),
             .colorMasks = mem.zeroes([2]Bitboard),
+            .pieces = @splat(Piece.Null),
         };
     }
 
@@ -67,7 +70,7 @@ pub const Board = struct {
 
         const starting_all = starting_white | starting_black;
 
-        return Board{
+        var board = Board{
             .pieceMasks = [7]Bitboard{
                 starting_all,
                 starting_pawns,
@@ -81,7 +84,18 @@ pub const Board = struct {
                 starting_white,
                 starting_black,
             },
+            .pieces = undefined,
         };
+        board.rebuildPieceMailboxFromMasks();
+        return board;
+    }
+
+    /// Fills `pieces` from `pieceMasks` (authoritative). Call after any bitboard mutation that skips make/unmake.
+    pub fn rebuildPieceMailboxFromMasks(self: *Board) void {
+        for (0..64) |i| {
+            const square = Square.fromInt(@as(u6, @intCast(i)));
+            self.pieces[i] = pieceFromMasksAt(self, square);
+        }
     }
 
     /// Returns true if color masks union equals occupied mask (internal validation).
@@ -174,15 +188,7 @@ pub const Board = struct {
 
     /// Returns the piece at the square, or Piece.Null if empty.
     pub fn pieceAtSquare(self: *const Board, square: Square) Piece {
-        inline for (@as(usize, comptime Piece.Pawn.int())..@as(usize, comptime Piece.King.int() + 1)) |pieceInt| {
-            const piece = Piece.fromInt(pieceInt);
-            if (self.pieceMask(piece) & square.mask() != 0) {
-                assert(self.isOccupiedAtSquare(square));
-                return piece;
-            }
-        }
-        assert(!self.isOccupiedAtSquare(square));
-        return Piece.Null;
+        return self.pieces[square.int()];
     }
 
     /// Toggles the given squares in the color mask (XOR).
@@ -200,56 +206,40 @@ pub const Board = struct {
         self.xorPieceMask(Piece.Null, mask_);
     }
 
-    /// Applies or reverts a castling move. Symmetric: calling twice restores the board. Requires move.flag == MoveFlag.Castling.
-    pub fn makeOrUnmakeCastlingMove(self: *Board, move: Move, forColor: Color) void {
-        assert(move.flag == MoveFlag.Castling);
-
-        const kingMoveMask = move.from.mask() | move.to.mask();
-        const rookMoveMask = castlingRookMoveMask(move.castlingFlank(), forColor);
-
-        self.xorPieceMask(Piece.King, kingMoveMask);
-        self.xorPieceMask(Piece.Rook, rookMoveMask);
-        self.xorColorMask(forColor, kingMoveMask | rookMoveMask);
-        self.xorOccupiedMask(kingMoveMask | rookMoveMask);
+    /// Applies a castling move. Requires move.flag == MoveFlag.Castling.
+    pub fn makeCastlingMove(self: *Board, move: Move, forColor: Color) void {
+        applyCastlingXor(self, move, forColor);
+        shiftMailboxCastlingMake(self, move, forColor);
     }
 
-    /// Applies or reverts an en passant capture. Symmetric. Requires move.flag == MoveFlag.EnPassant.
-    pub fn makeOrUnmakeEnPassantMove(self: *Board, move: Move, forColor: Color) void {
-        assert(move.flag == MoveFlag.EnPassant);
-
-        const captureSquare = Square.fromRankAndFile(forColor.enPassantCaptureRank(), move.to.file());
-        const captureMask = captureSquare.mask();
-
-        self.xorPieceMask(Piece.Pawn, move.from.mask() | move.to.mask() | captureMask);
-        self.xorColorMask(forColor, move.from.mask() | move.to.mask());
-        self.xorColorMask(forColor.other(), captureMask);
-        self.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
+    /// Reverts a castling move (same XOR toggle as `makeCastlingMove`; mailbox is updated for the pre-move layout).
+    pub fn unmakeCastlingMove(self: *Board, move: Move, forColor: Color) void {
+        applyCastlingXor(self, move, forColor);
+        shiftMailboxCastlingUnmake(self, move, forColor);
     }
 
-    /// Applies or reverts a normal or promotion move. movedPiece: piece on from before move. capturedPiece: piece on to before move, or Piece.Null. Symmetric.
-    pub fn makeOrUnmakeNormalOrPromotionMove(self: *Board, move: Move, forColor: Color, movedPiece: Piece, capturedPiece: Piece) void {
-        assert(move.flag == MoveFlag.Normal or move.flag == MoveFlag.Promotion);
+    /// Applies an en passant capture. Requires move.flag == MoveFlag.EnPassant.
+    pub fn makeEnPassantMove(self: *Board, move: Move, forColor: Color) void {
+        applyEnPassantXor(self, move, forColor);
+        shiftMailboxEnPassantMake(self, move, forColor);
+    }
 
-        self.xorColorMask(forColor, move.from.mask() | move.to.mask());
+    /// Reverts an en passant capture.
+    pub fn unmakeEnPassantMove(self: *Board, move: Move, forColor: Color) void {
+        applyEnPassantXor(self, move, forColor);
+        shiftMailboxEnPassantUnmake(self, move, forColor);
+    }
 
-        // Greedily occupy/unoccupy source and destination
-        // If move is a capture, we will need to xor the destination again
-        self.xorOccupiedMask(move.from.mask() | move.to.mask());
+    /// Applies a normal or promotion move. movedPiece: piece on from before move. capturedPiece: piece on to before move, or Piece.Null.
+    pub fn makeNormalOrPromotionMove(self: *Board, move: Move, forColor: Color, movedPiece: Piece, capturedPiece: Piece) void {
+        applyNormalOrPromotionXor(self, move, forColor, movedPiece, capturedPiece);
+        shiftMailboxNormalOrPromotionMake(self, move, movedPiece, capturedPiece);
+    }
 
-        if (capturedPiece != Piece.Null) {
-            self.xorPieceMask(capturedPiece, move.to.mask());
-            self.xorColorMask(forColor.other(), move.to.mask());
-
-            // Undo greedy xor
-            self.xorOccupiedMask(move.to.mask());
-        }
-
-        if (move.flag == MoveFlag.Promotion) {
-            self.xorPieceMask(Piece.Pawn, move.from.mask());
-            self.xorPieceMask(move.promotion.piece(), move.to.mask());
-        } else {
-            self.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
-        }
+    /// Reverts a normal or promotion move.
+    pub fn unmakeNormalOrPromotionMove(self: *Board, move: Move, forColor: Color, movedPiece: Piece, capturedPiece: Piece) void {
+        applyNormalOrPromotionXor(self, move, forColor, movedPiece, capturedPiece);
+        shiftMailboxNormalOrPromotionUnmake(self, move, movedPiece, capturedPiece);
     }
 
     /// Returns true if the square is attacked by any piece of the given color.
@@ -373,9 +363,134 @@ pub const Board = struct {
     }
 };
 
+/// Piece type at `square` from `pieceMasks` only (same rule as full mailbox rebuild).
+fn pieceFromMasksAt(board: *const Board, square: Square) Piece {
+    const m = square.mask();
+    inline for (@as(usize, comptime Piece.Pawn.int())..@as(usize, comptime Piece.King.int() + 1)) |pieceInt| {
+        const p = Piece.fromInt(@as(u3, @truncate(pieceInt)));
+        if (board.pieceMask(p) & m != 0) return p;
+    }
+    return Piece.Null;
+}
+
+fn shiftMailboxCastlingMake(board: *Board, move: Move, forColor: Color) void {
+    const flank = move.castlingFlank();
+    const rook_from = castlingRookFromSquare(flank, forColor);
+    const rook_to = castlingRookToSquare(flank, forColor);
+    board.pieces[move.from.int()] = Piece.Null;
+    board.pieces[move.to.int()] = Piece.King;
+    board.pieces[rook_from.int()] = Piece.Null;
+    board.pieces[rook_to.int()] = Piece.Rook;
+}
+
+fn shiftMailboxCastlingUnmake(board: *Board, move: Move, forColor: Color) void {
+    const flank = move.castlingFlank();
+    const rook_from = castlingRookFromSquare(flank, forColor);
+    const rook_to = castlingRookToSquare(flank, forColor);
+    board.pieces[move.to.int()] = Piece.Null;
+    board.pieces[move.from.int()] = Piece.King;
+    board.pieces[rook_to.int()] = Piece.Null;
+    board.pieces[rook_from.int()] = Piece.Rook;
+}
+
+fn shiftMailboxEnPassantMake(board: *Board, move: Move, forColor: Color) void {
+    const captureSquare = Square.fromRankAndFile(forColor.enPassantCaptureRank(), move.to.file());
+    board.pieces[move.from.int()] = Piece.Null;
+    board.pieces[captureSquare.int()] = Piece.Null;
+    board.pieces[move.to.int()] = Piece.Pawn;
+}
+
+fn shiftMailboxEnPassantUnmake(board: *Board, move: Move, forColor: Color) void {
+    const captureSquare = Square.fromRankAndFile(forColor.enPassantCaptureRank(), move.to.file());
+    board.pieces[move.to.int()] = Piece.Null;
+    board.pieces[captureSquare.int()] = Piece.Pawn;
+    board.pieces[move.from.int()] = Piece.Pawn;
+}
+
+fn shiftMailboxNormalOrPromotionMake(board: *Board, move: Move, movedPiece: Piece, capturedPiece: Piece) void {
+    _ = capturedPiece;
+    board.pieces[move.from.int()] = Piece.Null;
+    if (move.flag == MoveFlag.Promotion) {
+        board.pieces[move.to.int()] = move.promotion.piece();
+    } else {
+        board.pieces[move.to.int()] = movedPiece;
+    }
+}
+
+fn shiftMailboxNormalOrPromotionUnmake(board: *Board, move: Move, movedPiece: Piece, capturedPiece: Piece) void {
+    if (move.flag == MoveFlag.Promotion) {
+        board.pieces[move.to.int()] = capturedPiece;
+        board.pieces[move.from.int()] = Piece.Pawn;
+    } else {
+        board.pieces[move.to.int()] = capturedPiece;
+        board.pieces[move.from.int()] = movedPiece;
+    }
+}
+
+fn applyCastlingXor(board: *Board, move: Move, forColor: Color) void {
+    assert(move.flag == MoveFlag.Castling);
+    const kingMoveMask = move.from.mask() | move.to.mask();
+    const rookMoveMask = castlingRookMoveMask(move.castlingFlank(), forColor);
+    board.xorPieceMask(Piece.King, kingMoveMask);
+    board.xorPieceMask(Piece.Rook, rookMoveMask);
+    board.xorColorMask(forColor, kingMoveMask | rookMoveMask);
+    board.xorOccupiedMask(kingMoveMask | rookMoveMask);
+}
+
+fn applyEnPassantXor(board: *Board, move: Move, forColor: Color) void {
+    assert(move.flag == MoveFlag.EnPassant);
+    const captureSquare = Square.fromRankAndFile(forColor.enPassantCaptureRank(), move.to.file());
+    const captureMask = captureSquare.mask();
+    board.xorPieceMask(Piece.Pawn, move.from.mask() | move.to.mask() | captureMask);
+    board.xorColorMask(forColor, move.from.mask() | move.to.mask());
+    board.xorColorMask(forColor.other(), captureMask);
+    board.xorOccupiedMask(move.from.mask() | move.to.mask() | captureMask);
+}
+
+fn applyNormalOrPromotionXor(board: *Board, move: Move, forColor: Color, movedPiece: Piece, capturedPiece: Piece) void {
+    assert(move.flag == MoveFlag.Normal or move.flag == MoveFlag.Promotion);
+
+    board.xorColorMask(forColor, move.from.mask() | move.to.mask());
+
+    // Greedily occupy/unoccupy source and destination
+    // If move is a capture, we will need to xor the destination again
+    board.xorOccupiedMask(move.from.mask() | move.to.mask());
+
+    if (capturedPiece != Piece.Null) {
+        board.xorPieceMask(capturedPiece, move.to.mask());
+        board.xorColorMask(forColor.other(), move.to.mask());
+
+        // Undo greedy xor
+        board.xorOccupiedMask(move.to.mask());
+    }
+
+    if (move.flag == MoveFlag.Promotion) {
+        board.xorPieceMask(Piece.Pawn, move.from.mask());
+        board.xorPieceMask(move.promotion.piece(), move.to.mask());
+    } else {
+        board.xorPieceMask(movedPiece, move.from.mask() | move.to.mask());
+    }
+}
+
 /// Returns the bitboard of squares the rook moves through when castling on the given flank and color.
 fn castlingRookMoveMask(flank: Flank, color: Color) Bitboard {
     return flank.castlingRookFilesMask() & color.backRank().mask();
+}
+
+fn castlingRookFromSquare(flank: Flank, color: Color) Square {
+    const rank = color.backRank();
+    return switch (flank) {
+        .Kingside => Square.fromRankAndFile(rank, File.H),
+        .Queenside => Square.fromRankAndFile(rank, File.A),
+    };
+}
+
+fn castlingRookToSquare(flank: Flank, color: Color) Square {
+    const rank = color.backRank();
+    return switch (flank) {
+        .Kingside => Square.fromRankAndFile(rank, File.F),
+        .Queenside => Square.fromRankAndFile(rank, File.D),
+    };
 }
 
 const testing = @import("std").testing;
@@ -408,6 +523,7 @@ test "board mask operations" {
     board.xorPieceMask(Piece.Pawn, e4.mask());
     board.xorColorMask(Color.White, e4.mask());
     board.xorOccupiedMask(e4.mask());
+    board.rebuildPieceMailboxFromMasks();
 
     try testing.expect(board.pieceMask(Piece.Pawn) & e4.mask() != 0);
     try testing.expect(board.colorMask(Color.White) & e4.mask() != 0);
@@ -417,6 +533,7 @@ test "board mask operations" {
     board.xorPieceMask(Piece.Pawn, e4.mask());
     board.xorColorMask(Color.White, e4.mask());
     board.xorOccupiedMask(e4.mask());
+    board.rebuildPieceMailboxFromMasks();
 
     try testing.expect(board.pieceMask(Piece.Pawn) & e4.mask() == 0);
     try testing.expect(board.colorMask(Color.White) & e4.mask() == 0);
@@ -439,6 +556,7 @@ test "board isSquareAttacked" {
     testBoard.xorPieceMask(Piece.Pawn, Square.E2.mask());
     testBoard.xorColorMask(Color.White, Square.E2.mask());
     testBoard.xorOccupiedMask(Square.E2.mask());
+    testBoard.rebuildPieceMailboxFromMasks();
 
     try testing.expect(testBoard.isSquareAttacked(Square.D3, Color.White));
     try testing.expect(testBoard.isSquareAttacked(Square.F3, Color.White));
@@ -482,6 +600,7 @@ test "board validate does not panic" {
     board.xorPieceMask(Piece.King, Square.E8.mask());
     board.xorColorMask(Color.Black, Square.E8.mask());
     board.xorOccupiedMask(Square.E8.mask());
+    board.rebuildPieceMailboxFromMasks();
     board.validate();
 }
 
@@ -491,23 +610,24 @@ test "board hasOneKingPerColor and hasNoPawnsInFirstNorLastRank" {
     try testing.expect(board.hasNoPawnsInFirstNorLastRank());
 }
 
-test "board makeOrUnmakeCastlingMove" {
+test "board make and unmake castling" {
     var board = Board.blank();
     board.xorPieceMask(Piece.King, Square.E1.mask() | Square.E8.mask());
     board.xorPieceMask(Piece.Rook, Square.A1.mask() | Square.H1.mask());
     board.xorColorMask(Color.White, Square.E1.mask() | Square.A1.mask() | Square.H1.mask());
     board.xorColorMask(Color.Black, Square.E8.mask());
+    board.rebuildPieceMailboxFromMasks();
 
     const boardCopy = board;
 
     const move = Move.castling(Flank.Kingside, Color.White);
-    board.makeOrUnmakeCastlingMove(move, Color.White);
-    board.makeOrUnmakeCastlingMove(move, Color.White);
+    board.makeCastlingMove(move, Color.White);
+    board.unmakeCastlingMove(move, Color.White);
 
     try testing.expectEqual(boardCopy, board);
 }
 
-test "board makeOrUnmakeEnPassantMove" {
+test "board make and unmake en passant" {
     var board = Board.blank();
     // White pawn on e5, black pawn on d5. White captures en passant e5xd6.
     board.xorPieceMask(Piece.Pawn, Square.E5.mask() | Square.D5.mask());
@@ -519,26 +639,27 @@ test "board makeOrUnmakeEnPassantMove" {
     board.xorColorMask(Color.White, Square.A1.mask());
     board.xorColorMask(Color.Black, Square.A8.mask());
     board.xorOccupiedMask(Square.A1.mask() | Square.A8.mask());
+    board.rebuildPieceMailboxFromMasks();
 
     const originalOccupied = board.occupiedMask();
     const originalPawnMask = board.pieceMask(Piece.Pawn);
 
     const move = Move.newNonPromotion(Square.E5, Square.D6, MoveFlag.EnPassant);
-    board.makeOrUnmakeEnPassantMove(move, Color.White);
-    board.makeOrUnmakeEnPassantMove(move, Color.White);
+    board.makeEnPassantMove(move, Color.White);
+    board.unmakeEnPassantMove(move, Color.White);
 
     try testing.expectEqual(originalOccupied, board.occupiedMask());
     try testing.expectEqual(originalPawnMask, board.pieceMask(Piece.Pawn));
     board.validate();
 }
 
-test "board makeOrUnmakeNormalOrPromotionMove" {
+test "board make and unmake normal or promotion" {
     // Normal move: e2 to e4
     var board = Board.initial();
     const originalOccupied = board.occupiedMask();
     const move = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
-    board.makeOrUnmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
-    board.makeOrUnmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
+    board.makeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
+    board.unmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
     try testing.expectEqual(originalOccupied, board.occupiedMask());
     board.validate();
 
@@ -550,10 +671,11 @@ test "board makeOrUnmakeNormalOrPromotionMove" {
     captureBoard.xorColorMask(Color.White, Square.E1.mask() | Square.A1.mask());
     captureBoard.xorColorMask(Color.Black, Square.E7.mask() | Square.A8.mask());
     captureBoard.xorOccupiedMask(Square.E1.mask() | Square.E7.mask() | Square.A1.mask() | Square.A8.mask());
+    captureBoard.rebuildPieceMailboxFromMasks();
     const captureOriginalOccupied = captureBoard.occupiedMask();
     const captureMove = Move.newNonPromotion(Square.E1, Square.E7, MoveFlag.Normal);
-    captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
-    captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
+    captureBoard.makeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
+    captureBoard.unmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
     try testing.expectEqual(captureOriginalOccupied, captureBoard.occupiedMask());
     captureBoard.validate();
 
@@ -564,10 +686,11 @@ test "board makeOrUnmakeNormalOrPromotionMove" {
     promoBoard.xorColorMask(Color.White, Square.E7.mask() | Square.A1.mask());
     promoBoard.xorColorMask(Color.Black, Square.A8.mask());
     promoBoard.xorOccupiedMask(Square.E7.mask() | Square.A1.mask() | Square.A8.mask());
+    promoBoard.rebuildPieceMailboxFromMasks();
     const promoOriginalOccupied = promoBoard.occupiedMask();
     const promoMove = Move.newPromotion(Square.E7, Square.E8, PromotionPiece.Queen);
-    promoBoard.makeOrUnmakeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
-    promoBoard.makeOrUnmakeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
+    promoBoard.makeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
+    promoBoard.unmakeNormalOrPromotionMove(promoMove, Color.White, Piece.Pawn, Piece.Null);
     try testing.expectEqual(promoOriginalOccupied, promoBoard.occupiedMask());
     promoBoard.validate();
 }
@@ -581,6 +704,7 @@ test "board isMaskAttacked" {
     testBoard.xorPieceMask(Piece.Bishop, Square.C4.mask());
     testBoard.xorColorMask(Color.White, Square.C4.mask());
     testBoard.xorOccupiedMask(Square.C4.mask());
+    testBoard.rebuildPieceMailboxFromMasks();
     try testing.expect(testBoard.isMaskAttacked(Square.D5.mask(), Color.White));
     try testing.expect(testBoard.isMaskAttacked(Square.D5.mask() | Square.E4.mask(), Color.White));
 }

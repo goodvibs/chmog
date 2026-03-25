@@ -123,6 +123,7 @@ fn parseFenBoard(fenBoard: []const u8) !Board {
             }
         }
         try parseFenBoardRow(fenBoard[rowStartCharIndex..], rank, &board);
+        board.rebuildPieceMailboxFromMasks();
         return board;
     } else {
         return FenError.TooManyCharsInBoard;
@@ -510,6 +511,7 @@ test "parseFen errors - not one king per color" {
     pos.board.xorPieceMask(Piece.King, Square.E1.mask());
     pos.board.xorColorMask(Color.White, Square.E1.mask());
     pos.board.xorOccupiedMask(Square.E1.mask());
+    pos.board.rebuildPieceMailboxFromMasks();
     try testing.expect(!pos.board.hasOneKingPerColor());
 }
 
