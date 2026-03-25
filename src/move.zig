@@ -68,7 +68,7 @@ pub const Move = packed struct {
 
     /// Creates a castling move for the given flank and color.
     pub fn castling(flank: Flank, color: Color) Move {
-        return CASTLING_BY_FLANK_AND_COLOR[@as(usize, color.int())][@as(usize, flank.int())];
+        return CASTLING_BY_FLANK_AND_COLOR[color.int()][flank.int()];
     }
 
     /// Returns the flank for a castling move. Asserts castling flag.

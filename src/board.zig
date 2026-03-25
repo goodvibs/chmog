@@ -97,7 +97,7 @@ pub const Board = struct {
     /// Returns true if piece masks are disjoint and union to occupied (internal validation).
     pub fn doPieceMasksAgree(self: *const Board) bool {
         var pieceMasksUnion: Bitboard = 0;
-        inline for (self.pieceMasks[@as(usize, comptime Piece.Pawn.int())..]) |pieceMask_| {
+        inline for (self.pieceMasks[comptime Piece.Pawn.int()..]) |pieceMask_| {
             if (pieceMasksUnion & pieceMask_ != 0) return false;
             pieceMasksUnion |= pieceMask_;
         }
@@ -135,12 +135,12 @@ pub const Board = struct {
 
     /// Returns the bitboard of squares occupied by the given piece type.
     pub inline fn pieceMask(self: *const Board, piece: Piece) Bitboard {
-        return self.pieceMasks[@as(usize, piece.int())];
+        return self.pieceMasks[piece.int()];
     }
 
     /// Returns the bitboard of squares occupied by the given color.
     pub inline fn colorMask(self: *const Board, color: Color) Bitboard {
-        return self.colorMasks[@as(usize, color.int())];
+        return self.colorMasks[color.int()];
     }
 
     /// Returns the bitboard of squares with the given piece and color.
@@ -187,12 +187,12 @@ pub const Board = struct {
 
     /// Toggles the given squares in the color mask (XOR).
     pub inline fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
-        self.colorMasks[@as(usize, color.int())] ^= mask_;
+        self.colorMasks[color.int()] ^= mask_;
     }
 
     /// Toggles the given squares in the piece mask (XOR).
     pub inline fn xorPieceMask(self: *Board, piece: Piece, mask_: Bitboard) void {
-        self.pieceMasks[@as(usize, piece.int())] ^= mask_;
+        self.pieceMasks[piece.int()] ^= mask_;
     }
 
     /// Toggles the given squares in the occupied mask (XOR).
