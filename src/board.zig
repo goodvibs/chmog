@@ -132,27 +132,27 @@ pub const Board = struct {
     }
 
     /// Returns the bitboard of squares occupied by the given piece type.
-    pub fn pieceMask(self: *const Board, piece: Piece) Bitboard {
+    pub inline fn pieceMask(self: *const Board, piece: Piece) Bitboard {
         return self.pieceMasks[@as(usize, piece.int())];
     }
 
     /// Returns the bitboard of squares occupied by the given color.
-    pub fn colorMask(self: *const Board, color: Color) Bitboard {
+    pub inline fn colorMask(self: *const Board, color: Color) Bitboard {
         return self.colorMasks[@as(usize, color.int())];
     }
 
     /// Returns the bitboard of squares with the given piece and color.
-    pub fn mask(self: *const Board, piece: Piece, color: Color) Bitboard {
+    pub inline fn mask(self: *const Board, piece: Piece, color: Color) Bitboard {
         return self.pieceMask(piece) & self.colorMask(color);
     }
 
     /// Returns the bitboard of all occupied squares (pieceMasks[Piece.Null]).
-    pub fn occupiedMask(self: *const Board) Bitboard {
+    pub inline fn occupiedMask(self: *const Board) Bitboard {
         return self.pieceMask(Piece.Null);
     }
 
     /// Returns true if the square has a piece.
-    pub fn isOccupiedAtSquare(self: *const Board, square: Square) bool {
+    pub inline fn isOccupiedAtSquare(self: *const Board, square: Square) bool {
         return self.occupiedMask() & square.mask() != 0;
     }
 
@@ -184,17 +184,17 @@ pub const Board = struct {
     }
 
     /// Toggles the given squares in the color mask (XOR).
-    pub fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
+    pub inline fn xorColorMask(self: *Board, color: Color, mask_: Bitboard) void {
         self.colorMasks[@as(usize, color.int())] ^= mask_;
     }
 
     /// Toggles the given squares in the piece mask (XOR).
-    pub fn xorPieceMask(self: *Board, piece: Piece, mask_: Bitboard) void {
+    pub inline fn xorPieceMask(self: *Board, piece: Piece, mask_: Bitboard) void {
         self.pieceMasks[@as(usize, piece.int())] ^= mask_;
     }
 
     /// Toggles the given squares in the occupied mask (XOR).
-    pub fn xorOccupiedMask(self: *Board, mask_: Bitboard) void {
+    pub inline fn xorOccupiedMask(self: *Board, mask_: Bitboard) void {
         self.xorPieceMask(Piece.Null, mask_);
     }
 
