@@ -1,6 +1,8 @@
 const Build = @import("std").Build;
 const OptimizeMode = @import("std").builtin.OptimizeMode;
 
+const runtime_safety_level = @import("src/runtime_safety_level.zig");
+
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -11,6 +13,10 @@ pub fn build(b: *Build) void {
         .target = target,
         .optimize = OptimizeMode.Debug,
     });
+
+    const baseLibOpts = b.addOptions();
+    baseLibOpts.addOption(runtime_safety_level.RuntimeSafetyLevel, "level", runtime_safety_level.fromOptimize(.Debug));
+    baseLibMod.addOptions("build_options", baseLibOpts);
 
     const clap_dep = b.lazyDependency("clap", .{}) orelse return;
     const clap = clap_dep.module("clap");
@@ -73,6 +79,10 @@ pub fn build(b: *Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    const fullLibOpts = b.addOptions();
+    fullLibOpts.addOption(runtime_safety_level.RuntimeSafetyLevel, "level", runtime_safety_level.fromOptimize(optimize));
+    fullLibMod.addOptions("build_options", fullLibOpts);
 
     // Add output files as imports
     fullLibMod.addAnonymousImport("zobristKeys", .{ .root_source_file = zobristFile });

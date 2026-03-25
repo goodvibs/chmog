@@ -1,6 +1,7 @@
 //! Game position with move history and context stack for make/unmake.
 
 const std = @import("std");
+const runtimeSafetyLevel = @import("build_options").level;
 const assert = @import("std").debug.assert;
 const ArrayList = @import("std").ArrayList;
 const Allocator = @import("std").mem.Allocator;
@@ -77,7 +78,7 @@ pub const Position = struct {
         };
         pos.updateCheckInfo();
 
-        pos.validate();
+        pos.validateIfRuntimeSafety();
 
         return pos;
     }
@@ -141,9 +142,15 @@ pub const Position = struct {
         assert(self.isNotInIllegalCheck());
     }
 
+    pub fn validateIfRuntimeSafety(self: *const Position) void {
+        if (runtimeSafetyLevel != .None) {
+            self.validate();
+        }
+    }
+
     /// Applies the move and advances the position. Allocator used for context stack.
     pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) Allocator.Error!void {
-        self.validate();
+        self.validateIfRuntimeSafety();
 
         try self.contexts.append(allocator, self.contexts.items[self.depth()]);
 
@@ -219,15 +226,13 @@ pub const Position = struct {
 
         self.updateCheckInfo();
 
-        self.validate();
+        self.validateIfRuntimeSafety();
     }
 
     pub fn updateCheckInfo(self: *Position) void {
         self.currentContextMut().checkers = 0;
         self.currentContextMut().pinners = 0;
         self.currentContextMut().checkBlockers = 0;
-
-        self.validate();
 
         const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove));
 
@@ -266,7 +271,7 @@ pub const Position = struct {
 
     /// Reverts the move. Asserts not at root (depth > 0).
     pub fn unmakeMove(self: *Position, move: Move) void {
-        self.validate();
+        self.validateIfRuntimeSafety();
 
         assert(self.depth() > 0);
 
@@ -292,7 +297,7 @@ pub const Position = struct {
 
         _ = self.contexts.pop();
 
-        self.validate();
+        self.validateIfRuntimeSafety();
     }
 
     /// Perft (perft function): counts leaf nodes at given depth.

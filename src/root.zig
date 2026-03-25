@@ -16,6 +16,7 @@ pub const Square = @import("square.zig").Square;
 pub const Move = @import("move.zig").Move;
 pub const MoveFlag = @import("move.zig").MoveFlag;
 pub const FenError = @import("fen.zig").FenError;
+pub const RuntimeSafetyLevel = @import("runtime_safety_level.zig").RuntimeSafetyLevel;
 
 pub const attacks = @import("attacks/mod.zig");
 pub const fen = @import("fen.zig");

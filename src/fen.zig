@@ -314,6 +314,8 @@ pub fn parseFen(fen: []const u8, alloc: Allocator, contextsCapacity: usize) !Pos
 
     pos.updateCheckInfo();
 
+    pos.validate();
+
     return pos;
 }
 
