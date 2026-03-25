@@ -42,27 +42,32 @@ pub const Board = struct {
     /// Returns the standard starting position.
     pub fn initial() Board {
         const starting_wp = Rank.Two.mask();
-        const starting_bp = Rank.Seven.mask();
         const starting_wn = Square.B1.mask() | Square.G1.mask();
         const starting_wb = Square.C1.mask() | Square.F1.mask();
         const starting_wr = Square.A1.mask() | Square.H1.mask();
         const starting_wq = Square.D1.mask();
         const starting_wk = Square.E1.mask();
+
+        const starting_bp = Rank.Seven.mask();
         const starting_bn = Square.B8.mask() | Square.G8.mask();
         const starting_bb = Square.C8.mask() | Square.F8.mask();
         const starting_br = Square.A8.mask() | Square.H8.mask();
         const starting_bq = Square.D8.mask();
         const starting_bk = Square.E8.mask();
+
         const starting_pawns = starting_wp | starting_bp;
         const starting_knights = starting_wn | starting_bn;
         const starting_bishops = starting_wb | starting_bb;
         const starting_rooks = starting_wr | starting_br;
         const starting_queens = starting_wq | starting_bq;
         const starting_kings = starting_wk | starting_bk;
+
         const starting_white = starting_wp | starting_wn | starting_wb | starting_wr | starting_wq | starting_wk;
         const starting_black = starting_bp | starting_bn | starting_bb | starting_br | starting_bq | starting_bk;
+
         const starting_all = starting_white | starting_black;
-        const res = Board{
+
+        return Board{
             .pieceMasks = [7]Bitboard{
                 starting_all,
                 starting_pawns,
@@ -77,7 +82,6 @@ pub const Board = struct {
                 starting_black,
             },
         };
-        return res;
     }
 
     /// Returns true if color masks union equals occupied mask (internal validation).
