@@ -95,7 +95,7 @@ pub const Board = struct {
     }
 
     /// Returns true if piece masks are disjoint and union to occupied (internal validation).
-    pub fn arePieceMasksValid(self: *const Board) bool {
+    pub fn doPieceMasksAgree(self: *const Board) bool {
         var pieceMasksUnion: Bitboard = 0;
         inline for (self.pieceMasks[@as(usize, comptime Piece.Pawn.int())..]) |pieceMask_| {
             if (pieceMasksUnion & pieceMask_ != 0) return false;
@@ -111,6 +111,7 @@ pub const Board = struct {
             @popCount(kingsMask & self.colorMask(Color.White)) == 1 and
             @popCount(kingsMask & self.colorMask(Color.Black)) == 1;
     }
+
     /// Returns true if no pawns are on rank 1 or 8.
     pub fn hasNoPawnsInFirstNorLastRank(self: *const Board) bool {
         return self.pieceMask(Piece.Pawn) & (Rank.One.mask() | Rank.Eight.mask()) == 0;
@@ -120,8 +121,9 @@ pub const Board = struct {
     pub fn validate(self: *const Board) void {
         assert(self.doColorMasksUnionToOccupiedMask());
         assert(self.doColorMasksNotConflict());
-        assert(self.arePieceMasksValid());
+        assert(self.doPieceMasksAgree());
         assert(self.hasOneKingPerColor());
+        assert(self.hasNoPawnsInFirstNorLastRank());
     }
 
     /// Returns true if the given color's king is attacked.
