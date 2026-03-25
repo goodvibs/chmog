@@ -97,7 +97,7 @@ fn runPerftTestCase(
 test "perft initial position" {
     try runPerftTestCase(
         Position.initial,
-        3,
+        5,
         &NodeCountLookups.INITIAL_POSITION,
     );
 }
@@ -105,7 +105,7 @@ test "perft initial position" {
 test "perft kiwipete" {
     try runPerftTestCase(
         fenPositionConstructor("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
-        2,
+        5,
         &NodeCountLookups.KIWIPETE,
     );
 }
@@ -113,7 +113,7 @@ test "perft kiwipete" {
 test "perft position 3" {
     try runPerftTestCase(
         fenPositionConstructor("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"),
-        1,
+        5,
         &NodeCountLookups.POSITION_3,
     );
 }
@@ -121,7 +121,7 @@ test "perft position 3" {
 test "perft position 4" {
     try runPerftTestCase(
         fenPositionConstructor("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"),
-        3,
+        5,
         &NodeCountLookups.POSITION_4,
     );
 }
@@ -129,7 +129,7 @@ test "perft position 4" {
 test "perft position 5" {
     try runPerftTestCase(
         fenPositionConstructor("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-        2,
+        4,
         &NodeCountLookups.POSITION_5,
     );
 }
