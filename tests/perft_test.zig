@@ -77,7 +77,7 @@ fn runPerftTestCase(
     comptime depth: u8,
     comptime nodeCountLookup: anytype,
 ) !void {
-    const numContexts = depth + 1;
+    const numContexts: usize = depth + 1;
 
     var buf: [numContexts * @sizeOf(PositionContext)]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buf);
