@@ -1,5 +1,6 @@
 //! Zobrist key lookup for piece-square, en passant, castling, side to move.
 
+const assert = @import("std").debug.assert;
 const Bitboard = @import("../root.zig").Bitboard;
 const Piece = @import("../root.zig").Piece;
 const Square = @import("../root.zig").Square;
@@ -31,16 +32,9 @@ const enPassantFileKeys = ZOBRIST_KEYS_ARRAY[NUM_PIECE_SQUARE_KEYS .. NUM_PIECE_
 const castlingRightsKeys = ZOBRIST_KEYS_ARRAY[NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS .. NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS + NUM_CASTLING_RIGHTS_KEYS];
 const sideToMoveKey = ZOBRIST_KEYS_ARRAY[NUM_PIECE_SQUARE_KEYS + NUM_EN_PASSANT_FILE_KEYS + NUM_CASTLING_RIGHTS_KEYS];
 
-/// Returned when zobristKeyForPieceSquare receives Piece.Null.
-pub const ZobristError = error{
-    NullPieceNotAllowed, // Piece.Null has no zobrist key
-};
-
-/// Returns the Zobrist key for a piece on a square. Returns NullPieceNotAllowed for Piece.Null.
-pub fn zobristKeyForPieceSquare(piece: Piece, square: Square) ZobristError!Bitboard {
-    if (piece == Piece.Null) {
-        return ZobristError.NullPieceNotAllowed;
-    }
+/// Returns the Zobrist key for a piece on a square. Asserts piece is not Null.
+pub fn zobristKeyForPieceSquare(piece: Piece, square: Square) Bitboard {
+    assert(piece != Piece.Null);
     return pieceSquareKeys[@as(usize, piece.int() - 1) * 64 + @as(usize, square.int())];
 }
 

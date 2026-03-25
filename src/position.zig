@@ -31,11 +31,6 @@ const pawnsPushes = @import("./root.zig").attacks.pawnsPushes;
 const edgeToEdge = @import("./root.zig").utils.edgeToEdge;
 const between = @import("./root.zig").utils.between;
 
-/// Returned when unmakeMove is called at the root (no move to unmake).
-pub const PositionError = error{
-    CannotUnmakeAtRoot,
-};
-
 /// Chess position: board state, move history stack, halfmove clock, side to move.
 pub const Position = struct {
     board: Board,
@@ -234,7 +229,7 @@ pub const Position = struct {
 
         self.validate();
 
-        const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+        const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove));
 
         const diagonalSliders = self.board.pieceMask(Piece.Bishop) | self.board.pieceMask(Piece.Queen);
         const orthogonalSliders = self.board.pieceMask(Piece.Rook) | self.board.pieceMask(Piece.Queen);
@@ -252,7 +247,7 @@ pub const Position = struct {
         var slidingThreatMasksIter = iterSetBits(slidingThreats);
 
         while (slidingThreatMasksIter.next()) |attackingSliderMask| {
-            const attackingSliderSquare = Square.fromMask(attackingSliderMask) catch unreachable;
+            const attackingSliderSquare = Square.fromMask(attackingSliderMask);
             const betweenMask = between(kingSquare, attackingSliderSquare);
             assert(betweenMask & (kingSquare.mask() | attackingSliderMask) == 0);
             const occupiedBetween = betweenMask & self.board.occupiedMask();
@@ -269,11 +264,11 @@ pub const Position = struct {
         assert(@popCount(self.currentContext().checkers) <= 2);
     }
 
-    /// Reverts the move. Returns PositionError.CannotUnmakeAtRoot if at root.
-    pub fn unmakeMove(self: *Position, move: Move) PositionError!void {
+    /// Reverts the move. Asserts not at root (depth > 0).
+    pub fn unmakeMove(self: *Position, move: Move) void {
         self.validate();
 
-        if (self.depth() == 0) return PositionError.CannotUnmakeAtRoot;
+        assert(self.depth() > 0);
 
         self.sideToMove = self.sideToMove.other();
         self.halfmove -= 1;
@@ -314,7 +309,7 @@ pub const Position = struct {
         while (i < numMoves) : (i += 1) {
             try self.makeMove(allocator, moves[i]);
             nodes += try self.perft(allocator, targetDepth - 1);
-            self.unmakeMove(moves[i]) catch unreachable;
+            self.unmakeMove(moves[i]);
         }
         return nodes;
     }
@@ -323,7 +318,7 @@ pub const Position = struct {
     /// Only runs full legality for moves that need it:
     /// from a pinned square, king moves (including castling), or en passant.
     fn compactLegalInPlace(self: *const Position, moves: [*]Move, nextMovesPtr: [*]Move) [*]Move {
-        const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+        const kingSquare = Square.fromMask(self.board.mask(Piece.King, self.sideToMove));
 
         var lastMovePtr = nextMovesPtr - 1;
         var movesPtr = lastMovePtr;
@@ -365,8 +360,8 @@ pub const Position = struct {
 
         const allowedDests: Bitboard = if (self.currentContext().checkers == 0) ~@as(Bitboard, 0) else blk: {
             if (numCheckers == 1) {
-                const king = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
-                const checker = Square.fromMask(self.currentContext().checkers) catch unreachable;
+                const king = Square.fromMask(self.board.mask(Piece.King, self.sideToMove));
+                const checker = Square.fromMask(self.currentContext().checkers);
                 const blockOrCheckMask = between(checker, king);
 
                 assert(blockOrCheckMask & king.mask() == 0);
@@ -414,7 +409,7 @@ pub const Position = struct {
         const queens = self.board.pieceMask(Piece.Queen);
         const opponentDiagonalAttackers = (self.board.pieceMask(Piece.Bishop) | queens) & opponentPieces;
         const opponentOrthogonalAttackers = (self.board.pieceMask(Piece.Rook) | queens) & opponentPieces;
-        const currentSideKing = Square.fromMask(self.board.mask(Piece.King, self.sideToMove)) catch unreachable;
+        const currentSideKing = Square.fromMask(self.board.mask(Piece.King, self.sideToMove));
 
         return slidingBishopAttacks(currentSideKing, occupiedMaskAfterMove) & opponentDiagonalAttackers == 0 and
             slidingRookAttacks(currentSideKing, occupiedMaskAfterMove) & opponentOrthogonalAttackers == 0;
@@ -422,7 +417,7 @@ pub const Position = struct {
 
     pub fn isPseudoLegalCastlingLegal(self: *const Position, move: Move) bool {
         assert(move.flag == MoveFlag.Castling);
-        return !self.castlingInCheck(move.castlingFlank() catch unreachable);
+        return !self.castlingInCheck(move.castlingFlank());
     }
 
     pub fn isPseudoLegalKingMoveLegal(self: *const Position, move: Move) bool {
@@ -446,7 +441,7 @@ pub const Position = struct {
 
         var sourceMasksIter = iterSetBits(from);
         while (sourceMasksIter.next()) |sourceMask| {
-            const source = Square.fromMask(sourceMask) catch unreachable;
+            const source = Square.fromMask(sourceMask);
 
             const attacks: Bitboard = blk: {
                 const T = @TypeOf(pieceAttacks);
@@ -502,16 +497,16 @@ pub const Position = struct {
         if (self.currentContext().doublePawnPushFile) |file| {
             const captureRank = self.sideToMove.enPassantDestRank();
             const captureMask = captureRank.mask() & file.mask();
-            const captureSquare = Square.fromMask(captureMask) catch unreachable;
+            const captureSquare = Square.fromMask(captureMask);
             // One bit in captureMask = hypothetical opponent pawn on the EP target; pawnsAttacks(..., .other())
             // is the reverse map (same idea as Stockfish attacks_bb<PAWN>(ep, Them)).
             const sourcesMask = self.board.mask(Piece.Pawn, self.sideToMove) & pawnsAttacks(captureMask, self.sideToMove.other());
             var epSources = sourcesMask;
             while (epSources != 0) {
                 const sourceMask = lsbMask(epSources);
-                const sourceSquare = Square.fromMask(sourceMask) catch unreachable;
+                const sourceSquare = Square.fromMask(sourceMask);
                 epSources ^= sourceMask;
-                nextMovesPtr[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant) catch unreachable;
+                nextMovesPtr[0] = Move.newNonPromotion(sourceSquare, captureSquare, MoveFlag.EnPassant);
                 nextMovesPtr += 1;
             }
         }
@@ -551,7 +546,7 @@ pub const Position = struct {
 
             var attackerSourceMasksIter = iterSetBits(relevantSlidingAttackers);
             while (attackerSourceMasksIter.next()) |attackerSourceMask| {
-                const attackerSource = Square.fromMask(attackerSourceMask) catch unreachable;
+                const attackerSource = Square.fromMask(attackerSourceMask);
                 const blockers = between(dest, attackerSource) & occupied;
                 if (blockers == 0) {
                     return false;
@@ -575,13 +570,13 @@ fn splatPawnMoves(comptime arePromotions: bool, fromOffset: i7, to: Bitboard, mo
     var nextMovesPtr = moves;
     var iter = iterSetBits(to);
     while (iter.next()) |destMask| {
-        const dest = Square.fromMask(destMask) catch unreachable;
+        const dest = Square.fromMask(destMask);
         const from = dest.relative(fromOffset) orelse unreachable;
         if (arePromotions) {
             nextMovesPtr[0..4].* = generatePawnPromotions(from, dest);
             nextMovesPtr += 4;
         } else {
-            nextMovesPtr[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal) catch unreachable;
+            nextMovesPtr[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal);
             nextMovesPtr += 1;
         }
     }
@@ -601,8 +596,8 @@ fn splatMoves(from: Square, to: Bitboard, moves: [*]Move) [*]Move {
     var nextMovesPtr = moves;
     var iter = iterSetBits(to);
     while (iter.next()) |destMask| {
-        const dest = Square.fromMask(destMask) catch unreachable;
-        nextMovesPtr[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal) catch unreachable;
+        const dest = Square.fromMask(destMask);
+        nextMovesPtr[0] = Move.newNonPromotion(from, dest, MoveFlag.Normal);
         nextMovesPtr += 1;
     }
     return nextMovesPtr;

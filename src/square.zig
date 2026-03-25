@@ -1,17 +1,11 @@
 //! Board square: a1-h8, 64 squares indexed 0-63.
 
+const assert = @import("std").debug.assert;
 const Bitboard = @import("./root.zig").Bitboard;
 const SquareToBitboard = @import("./root.zig").utils.SquareToBitboard;
 const Rank = @import("./root.zig").Rank;
 const File = @import("./root.zig").File;
 const QueenlikeMoveDirection = @import("./root.zig").utils.QueenlikeMoveDirection;
-
-/// Square errors: EmptyBitboard (fromMask(0)), MultipleBitsSet, InvalidSquareName.
-pub const SquareError = error{
-    EmptyBitboard, // fromMask(0)
-    MultipleBitsSet, // fromMask with popcount != 1
-    InvalidSquareName, // fromName - invalid file or rank char
-};
 
 /// One of 64 chess squares (a1-h8, rank-major order).
 pub const Square = enum(u6) {
@@ -121,9 +115,9 @@ pub const Square = enum(u6) {
         return File.fromInt(@intCast(self.int() % 8));
     }
 
-    /// Returns the square for a bitboard with exactly one bit set.
-    pub fn fromMask(bitboard: Bitboard) SquareError!Square {
-        if (bitboard == 0) return SquareError.EmptyBitboard else if (@popCount(bitboard) != 1) return SquareError.MultipleBitsSet;
+    /// Returns the square for a bitboard with exactly one bit set. Asserts popcount is 1.
+    pub fn fromMask(bitboard: Bitboard) Square {
+        assert(bitboard != 0 and @popCount(bitboard) == 1);
         return Square.fromInt(@truncate(@clz(bitboard)));
     }
 
@@ -223,10 +217,17 @@ pub const Square = enum(u6) {
         return NAMES[self.int()];
     }
 
-    /// Parses square name (e.g. "e4"). Returns InvalidSquareName for invalid input.
-    pub fn fromName(name_: [2]u8) SquareError!Square {
-        const rank_ = Rank.fromChar(name_[1]) catch return SquareError.InvalidSquareName;
-        const file_ = File.fromLowercaseChar(name_[0]) catch return SquareError.InvalidSquareName;
+    /// Parses square name (e.g. "e4"). Asserts valid lowercase file a-h and rank 1-8.
+    pub fn fromName(name_: [2]u8) Square {
+        return fromNameOrNull(name_) orelse unreachable;
+    }
+
+    /// Parses square name; returns null if file/rank chars are not a valid square.
+    pub fn fromNameOrNull(name_: [2]u8) ?Square {
+        if (name_[0] < 'a' or name_[0] > 'h') return null;
+        if (name_[1] < '1' or name_[1] > '8') return null;
+        const file_ = File.fromLowercaseChar(name_[0]);
+        const rank_ = Rank.fromChar(name_[1]);
         return Square.fromRankAndFile(rank_, file_);
     }
 
@@ -314,15 +315,9 @@ test "square mask and fromMask" {
         const square = Square.fromInt(@as(u6, @intCast(i)));
         const mask = square.mask();
         try testing.expectEqual(@as(u32, 1), @popCount(mask));
-        const reconstructed = try Square.fromMask(mask);
+        const reconstructed = Square.fromMask(mask);
         try testing.expectEqual(square, reconstructed);
     }
-}
-
-test "square fromMask errors" {
-    try testing.expectError(SquareError.EmptyBitboard, Square.fromMask(0));
-    try testing.expectError(SquareError.MultipleBitsSet, Square.fromMask(3));
-    try testing.expectError(SquareError.MultipleBitsSet, Square.fromMask(0xFFFFFFFFFFFFFFFF));
 }
 
 test "square distance functions" {
@@ -371,13 +366,13 @@ test "square name and fromName" {
     try testing.expectEqualSlices(u8, "h1", &Square.H1.name());
     try testing.expectEqualSlices(u8, "d4", &Square.D4.name());
 
-    try testing.expectEqual(Square.A8, try Square.fromName([2]u8{ 'a', '8' }));
-    try testing.expectEqual(Square.E1, try Square.fromName([2]u8{ 'e', '1' }));
-    try testing.expectEqual(Square.H1, try Square.fromName([2]u8{ 'h', '1' }));
-    try testing.expectEqual(Square.D4, try Square.fromName([2]u8{ 'd', '4' }));
+    try testing.expectEqual(Square.A8, Square.fromName([2]u8{ 'a', '8' }));
+    try testing.expectEqual(Square.E1, Square.fromName([2]u8{ 'e', '1' }));
+    try testing.expectEqual(Square.H1, Square.fromName([2]u8{ 'h', '1' }));
+    try testing.expectEqual(Square.D4, Square.fromName([2]u8{ 'd', '4' }));
 
-    try testing.expectError(SquareError.InvalidSquareName, Square.fromName([2]u8{ 'x', '8' }));
-    try testing.expectError(SquareError.InvalidSquareName, Square.fromName([2]u8{ 'a', '9' }));
+    try testing.expectEqual(@as(?Square, null), Square.fromNameOrNull([2]u8{ 'x', '8' }));
+    try testing.expectEqual(@as(?Square, null), Square.fromNameOrNull([2]u8{ 'a', '9' }));
 }
 
 test "square diagonals and orthogonals" {

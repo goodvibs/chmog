@@ -108,7 +108,7 @@ fn MagicAttacksLookup(comptime tableSize: usize) type {
                     attacksLookup[subsetIdx] = computeAttacks(s, blockers);
                 }
 
-                var rng = Prng.init(seeds[s.rank().int()]) catch unreachable;
+                var rng = Prng.init(seeds[s.rank().int()]);
                 var magicNumber: Bitboard = undefined;
 
                 var blockerMaskIndex: usize = 0;

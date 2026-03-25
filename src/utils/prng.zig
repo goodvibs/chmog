@@ -1,17 +1,15 @@
 //! Pseudo-random number generator for magic bitboard generation.
 
+const assert = @import("std").debug.assert;
 const Bitboard = @import("../root.zig").Bitboard;
-
-/// Returned when Prng.init receives seed 0.
-pub const PrngError = error{ZeroSeed};
 
 /// Xorshift-style PRNG producing Bitboard values.
 pub const Prng = struct {
     s: Bitboard,
 
-    /// Creates a PRNG. Returns ZeroSeed if seed is 0.
-    pub fn init(seed: Bitboard) PrngError!Prng {
-        if (seed == 0) return PrngError.ZeroSeed;
+    /// Creates a PRNG. Asserts seed is non-zero.
+    pub fn init(seed: Bitboard) Prng {
+        assert(seed != 0);
         return Prng{ .s = seed };
     }
 

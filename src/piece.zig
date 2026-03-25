@@ -1,9 +1,6 @@
 //! Piece types: Pawn, Knight, Bishop, Rook, Queen, King.
 
-/// Returned when Piece.fromInt receives index 7 (reserved).
-pub const PieceError = error{InvalidPieceIndex}; // index 7 is reserved
-/// Returned when PromotionPiece.fromPiece receives Pawn or King.
-pub const PromotionPieceError = error{NotAPromotionPiece}; // Pawn/King cannot promote to themselves
+const assert = @import("std").debug.assert;
 
 /// Chess piece type (Null, Pawn, Knight, Bishop, Rook, Queen, King).
 pub const Piece = enum(u3) {
@@ -15,9 +12,9 @@ pub const Piece = enum(u3) {
     Queen = 5,
     King = 6,
 
-    /// Creates piece from 0-6 index. Returns InvalidPieceIndex for 7.
-    pub fn fromInt(index: u3) PieceError!Piece {
-        if (index == 7) return PieceError.InvalidPieceIndex;
+    /// Creates piece from 0-6 index. Asserts index is not 7 (reserved).
+    pub fn fromInt(index: u3) Piece {
+        assert(index != 7);
         return @enumFromInt(index);
     }
 
@@ -147,29 +144,28 @@ pub const PromotionPiece = enum(u2) {
         return @intFromEnum(self);
     }
 
-    /// Converts Piece to PromotionPiece. Returns NotAPromotionPiece for Pawn/King.
-    pub fn fromPiece(piece_: Piece) PromotionPieceError!PromotionPiece {
-        if (piece_ != Piece.Knight and piece_ != Piece.Bishop and piece_ != Piece.Rook and piece_ != Piece.Queen) return PromotionPieceError.NotAPromotionPiece;
+    /// Converts Piece to PromotionPiece. Asserts piece is Knight, Bishop, Rook, or Queen.
+    pub fn fromPiece(piece_: Piece) PromotionPiece {
+        assert(piece_ == Piece.Knight or piece_ == Piece.Bishop or piece_ == Piece.Rook or piece_ == Piece.Queen);
         return @enumFromInt(piece_.int() - Piece.Knight.int());
     }
 
     /// Returns the corresponding Piece.
     pub fn piece(self: PromotionPiece) Piece {
-        return Piece.fromInt(@as(u3, self.int()) + Piece.Knight.int()) catch unreachable;
+        return Piece.fromInt(@as(u3, self.int()) + Piece.Knight.int());
     }
 };
 
 const testing = @import("std").testing;
 
 test "piece fromInt and int" {
-    try testing.expectEqual(Piece.Null, try Piece.fromInt(0));
-    try testing.expectEqual(Piece.Pawn, try Piece.fromInt(1));
-    try testing.expectEqual(Piece.Knight, try Piece.fromInt(2));
-    try testing.expectEqual(Piece.Bishop, try Piece.fromInt(3));
-    try testing.expectEqual(Piece.Rook, try Piece.fromInt(4));
-    try testing.expectEqual(Piece.Queen, try Piece.fromInt(5));
-    try testing.expectEqual(Piece.King, try Piece.fromInt(6));
-    try testing.expectError(PieceError.InvalidPieceIndex, Piece.fromInt(7));
+    try testing.expectEqual(Piece.Null, Piece.fromInt(0));
+    try testing.expectEqual(Piece.Pawn, Piece.fromInt(1));
+    try testing.expectEqual(Piece.Knight, Piece.fromInt(2));
+    try testing.expectEqual(Piece.Bishop, Piece.fromInt(3));
+    try testing.expectEqual(Piece.Rook, Piece.fromInt(4));
+    try testing.expectEqual(Piece.Queen, Piece.fromInt(5));
+    try testing.expectEqual(Piece.King, Piece.fromInt(6));
 
     try testing.expectEqual(@as(u3, 0), Piece.Null.int());
     try testing.expectEqual(@as(u3, 1), Piece.Pawn.int());
@@ -237,12 +233,10 @@ test "promotionPiece fromInt and int" {
 }
 
 test "promotionPiece fromPiece and piece" {
-    try testing.expectEqual(PromotionPiece.Knight, try PromotionPiece.fromPiece(Piece.Knight));
-    try testing.expectEqual(PromotionPiece.Bishop, try PromotionPiece.fromPiece(Piece.Bishop));
-    try testing.expectEqual(PromotionPiece.Rook, try PromotionPiece.fromPiece(Piece.Rook));
-    try testing.expectEqual(PromotionPiece.Queen, try PromotionPiece.fromPiece(Piece.Queen));
-    try testing.expectError(PromotionPieceError.NotAPromotionPiece, PromotionPiece.fromPiece(Piece.Pawn));
-    try testing.expectError(PromotionPieceError.NotAPromotionPiece, PromotionPiece.fromPiece(Piece.King));
+    try testing.expectEqual(PromotionPiece.Knight, PromotionPiece.fromPiece(Piece.Knight));
+    try testing.expectEqual(PromotionPiece.Bishop, PromotionPiece.fromPiece(Piece.Bishop));
+    try testing.expectEqual(PromotionPiece.Rook, PromotionPiece.fromPiece(Piece.Rook));
+    try testing.expectEqual(PromotionPiece.Queen, PromotionPiece.fromPiece(Piece.Queen));
 
     try testing.expectEqual(Piece.Knight, PromotionPiece.Knight.piece());
     try testing.expectEqual(Piece.Bishop, PromotionPiece.Bishop.piece());

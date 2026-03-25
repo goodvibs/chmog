@@ -77,7 +77,7 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                     rowComplete = true;
                     break;
                 } else if (emptySquares < squaresLeftInRow) {
-                    file = file.rightN(@truncate(emptySquares)) catch unreachable;
+                    file = file.rightN(@truncate(emptySquares));
                 } else {
                     return FenError.BoardRowLengthExceeded;
                 }
@@ -95,10 +95,11 @@ fn parseFenBoardRow(fenBoardRow: []const u8, rank: Rank, board: *Board) !void {
                 board.xorColorMask(color, square.mask());
                 board.xorOccupiedMask(square.mask());
 
-                file = file.right() catch {
+                if (file == File.H) {
                     rowComplete = true;
                     break;
-                };
+                }
+                file = file.right();
             },
             else => return FenError.InvalidCharInBoardRow,
         }
@@ -118,7 +119,7 @@ fn parseFenBoard(fenBoard: []const u8) !Board {
             if (char == '/') {
                 try parseFenBoardRow(fenBoard[rowStartCharIndex..charIndex], rank, &board);
                 rowStartCharIndex = charIndex + 1;
-                rank = rank.down() catch unreachable;
+                rank = rank.down();
             }
         }
         try parseFenBoardRow(fenBoard[rowStartCharIndex..], rank, &board);
@@ -166,7 +167,7 @@ fn parseFenCastling(fenCastling: []const u8) !CastlingRights {
 
 fn parseFenEnPassantSquare(fenEnPassantSquare: []const u8) !?Square {
     if (fenEnPassantSquare.len == 2) {
-        return Square.fromName([2]u8{ fenEnPassantSquare[0], fenEnPassantSquare[1] }) catch FenError.InvalidEnPassantSquare;
+        return Square.fromNameOrNull([2]u8{ fenEnPassantSquare[0], fenEnPassantSquare[1] }) orelse return FenError.InvalidEnPassantSquare;
     } else if ((fenEnPassantSquare.len == 1) and (fenEnPassantSquare[0] == '-' or
         fenEnPassantSquare[0] == '–' or
         fenEnPassantSquare[0] == '—'))

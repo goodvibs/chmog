@@ -16,13 +16,13 @@ const zobristKeyForSideToMove = @import("../root.zig").zobrist.zobristKeyForSide
 pub fn computeBoardZobristHash(board: *const Board) Bitboard {
     var hash: Bitboard = 0;
     for (1..7) |i| {
-        const piece = Piece.fromInt(@truncate(i)) catch unreachable;
+        const piece = Piece.fromInt(@truncate(i));
         const mask = board.pieceMasks[i];
         var iter = iterSetBits(mask);
         for (0..@popCount(mask)) |_| {
             const squareMask = iter.next() orelse unreachable;
-            const square = Square.fromMask(squareMask) catch unreachable;
-            const key = zobristKeyforPieceSquare(piece, square) catch unreachable;
+            const square = Square.fromMask(squareMask);
+            const key = zobristKeyforPieceSquare(piece, square);
             hash ^= key;
         }
     }

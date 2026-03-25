@@ -1,12 +1,7 @@
 //! Chess file: a-h (columns).
 
+const assert = @import("std").debug.assert;
 const Bitboard = @import("./root.zig").Bitboard;
-
-/// File errors: InvalidFileChar, FileOutOfBounds.
-pub const FileError = error{
-    InvalidFileChar, // char not in 'a'-'h' or 'A'-'H'
-    FileOutOfBounds, // left/right would go off board
-};
 
 /// One of 8 chess files (a-h).
 pub const File = enum(u3) {
@@ -45,39 +40,39 @@ pub const File = enum(u3) {
         return @as(u8, self.int()) + 'A';
     }
 
-    /// Parses file from lowercase char. Returns InvalidFileChar for invalid input.
-    pub fn fromLowercaseChar(char: u8) FileError!File {
-        if (char < 'a' or char > 'h') return FileError.InvalidFileChar;
+    /// Parses file from lowercase char. Asserts char is in 'a'-'h'.
+    pub fn fromLowercaseChar(char: u8) File {
+        assert(char >= 'a' and char <= 'h');
         const int_: u3 = @truncate(char - 'a');
         return File.fromInt(int_);
     }
 
-    /// Parses file from uppercase char. Returns InvalidFileChar for invalid input.
-    pub fn fromUppercaseChar(char: u8) FileError!File {
-        if (char < 'A' or char > 'H') return FileError.InvalidFileChar;
+    /// Parses file from uppercase char. Asserts char is in 'A'-'H'.
+    pub fn fromUppercaseChar(char: u8) File {
+        assert(char >= 'A' and char <= 'H');
         const int_: u3 = @truncate(char - 'A');
         return File.fromInt(int_);
     }
 
-    /// Returns the file one step toward A. Returns FileOutOfBounds at A.
-    pub fn left(self: File) !File {
+    /// Returns the file one step toward A. Asserts not at A.
+    pub fn left(self: File) File {
         return self.leftN(1);
     }
 
-    /// Returns the file one step toward H. Returns FileOutOfBounds at H.
-    pub fn right(self: File) !File {
+    /// Returns the file one step toward H. Asserts not at H.
+    pub fn right(self: File) File {
         return self.rightN(1);
     }
 
-    /// Returns the file n steps toward A. Returns FileOutOfBounds if out of range.
-    pub fn leftN(self: File, n: u3) FileError!File {
-        if (n > self.int()) return FileError.FileOutOfBounds;
+    /// Returns the file n steps toward A. Asserts in range.
+    pub fn leftN(self: File, n: u3) File {
+        assert(n <= self.int());
         return File.fromInt(self.int() - n);
     }
 
-    /// Returns the file n steps toward H. Returns FileOutOfBounds if out of range.
-    pub fn rightN(self: File, n: u3) FileError!File {
-        if (n > (File.H.int() - self.int())) return FileError.FileOutOfBounds;
+    /// Returns the file n steps toward H. Asserts in range.
+    pub fn rightN(self: File, n: u3) File {
+        assert(n <= (File.H.int() - self.int()));
         return File.fromInt(self.int() + n);
     }
 };
@@ -125,81 +120,59 @@ test "file lowercaseChar and uppercaseChar" {
 }
 
 test "file fromLowercaseChar" {
-    try testing.expectEqual(File.A, try File.fromLowercaseChar('a'));
-    try testing.expectEqual(File.B, try File.fromLowercaseChar('b'));
-    try testing.expectEqual(File.C, try File.fromLowercaseChar('c'));
-    try testing.expectEqual(File.D, try File.fromLowercaseChar('d'));
-    try testing.expectEqual(File.E, try File.fromLowercaseChar('e'));
-    try testing.expectEqual(File.F, try File.fromLowercaseChar('f'));
-    try testing.expectEqual(File.G, try File.fromLowercaseChar('g'));
-    try testing.expectEqual(File.H, try File.fromLowercaseChar('h'));
-
-    try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('`'));
-    try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('i'));
-    try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('A'));
-    try testing.expectError(FileError.InvalidFileChar, File.fromLowercaseChar('0'));
+    try testing.expectEqual(File.A, File.fromLowercaseChar('a'));
+    try testing.expectEqual(File.B, File.fromLowercaseChar('b'));
+    try testing.expectEqual(File.C, File.fromLowercaseChar('c'));
+    try testing.expectEqual(File.D, File.fromLowercaseChar('d'));
+    try testing.expectEqual(File.E, File.fromLowercaseChar('e'));
+    try testing.expectEqual(File.F, File.fromLowercaseChar('f'));
+    try testing.expectEqual(File.G, File.fromLowercaseChar('g'));
+    try testing.expectEqual(File.H, File.fromLowercaseChar('h'));
 }
 
 test "file fromUppercaseChar" {
-    try testing.expectEqual(File.A, try File.fromUppercaseChar('A'));
-    try testing.expectEqual(File.B, try File.fromUppercaseChar('B'));
-    try testing.expectEqual(File.C, try File.fromUppercaseChar('C'));
-    try testing.expectEqual(File.D, try File.fromUppercaseChar('D'));
-    try testing.expectEqual(File.E, try File.fromUppercaseChar('E'));
-    try testing.expectEqual(File.F, try File.fromUppercaseChar('F'));
-    try testing.expectEqual(File.G, try File.fromUppercaseChar('G'));
-    try testing.expectEqual(File.H, try File.fromUppercaseChar('H'));
-
-    try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('@'));
-    try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('I'));
-    try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('a'));
-    try testing.expectError(FileError.InvalidFileChar, File.fromUppercaseChar('0'));
+    try testing.expectEqual(File.A, File.fromUppercaseChar('A'));
+    try testing.expectEqual(File.B, File.fromUppercaseChar('B'));
+    try testing.expectEqual(File.C, File.fromUppercaseChar('C'));
+    try testing.expectEqual(File.D, File.fromUppercaseChar('D'));
+    try testing.expectEqual(File.E, File.fromUppercaseChar('E'));
+    try testing.expectEqual(File.F, File.fromUppercaseChar('F'));
+    try testing.expectEqual(File.G, File.fromUppercaseChar('G'));
+    try testing.expectEqual(File.H, File.fromUppercaseChar('H'));
 }
 
 test "file left" {
-    try testing.expectEqual(File.A, try File.B.left());
-    try testing.expectEqual(File.B, try File.C.left());
-    try testing.expectEqual(File.C, try File.D.left());
-    try testing.expectEqual(File.D, try File.E.left());
-    try testing.expectEqual(File.E, try File.F.left());
-    try testing.expectEqual(File.F, try File.G.left());
-    try testing.expectEqual(File.G, try File.H.left());
-
-    try testing.expectError(FileError.FileOutOfBounds, File.A.left());
+    try testing.expectEqual(File.A, File.B.left());
+    try testing.expectEqual(File.B, File.C.left());
+    try testing.expectEqual(File.C, File.D.left());
+    try testing.expectEqual(File.D, File.E.left());
+    try testing.expectEqual(File.E, File.F.left());
+    try testing.expectEqual(File.F, File.G.left());
+    try testing.expectEqual(File.G, File.H.left());
 }
 
 test "file right" {
-    try testing.expectEqual(File.B, try File.A.right());
-    try testing.expectEqual(File.C, try File.B.right());
-    try testing.expectEqual(File.D, try File.C.right());
-    try testing.expectEqual(File.E, try File.D.right());
-    try testing.expectEqual(File.F, try File.E.right());
-    try testing.expectEqual(File.G, try File.F.right());
-    try testing.expectEqual(File.H, try File.G.right());
-
-    try testing.expectError(FileError.FileOutOfBounds, File.H.right());
+    try testing.expectEqual(File.B, File.A.right());
+    try testing.expectEqual(File.C, File.B.right());
+    try testing.expectEqual(File.D, File.C.right());
+    try testing.expectEqual(File.E, File.D.right());
+    try testing.expectEqual(File.F, File.E.right());
+    try testing.expectEqual(File.G, File.F.right());
+    try testing.expectEqual(File.H, File.G.right());
 }
 
 test "file leftN" {
-    try testing.expectEqual(File.A, try File.C.leftN(2));
-    try testing.expectEqual(File.B, try File.D.leftN(2));
-    try testing.expectEqual(File.A, try File.E.leftN(4));
-    try testing.expectEqual(File.A, try File.A.leftN(0));
-    try testing.expectEqual(File.A, try File.H.leftN(7));
-
-    try testing.expectError(FileError.FileOutOfBounds, File.A.leftN(1));
-    try testing.expectError(FileError.FileOutOfBounds, File.B.leftN(3));
-    try testing.expectError(FileError.FileOutOfBounds, File.C.leftN(4));
+    try testing.expectEqual(File.A, File.C.leftN(2));
+    try testing.expectEqual(File.B, File.D.leftN(2));
+    try testing.expectEqual(File.A, File.E.leftN(4));
+    try testing.expectEqual(File.A, File.A.leftN(0));
+    try testing.expectEqual(File.A, File.H.leftN(7));
 }
 
 test "file rightN" {
-    try testing.expectEqual(File.C, try File.A.rightN(2));
-    try testing.expectEqual(File.D, try File.B.rightN(2));
-    try testing.expectEqual(File.E, try File.A.rightN(4));
-    try testing.expectEqual(File.A, try File.A.rightN(0));
-    try testing.expectEqual(File.H, try File.A.rightN(7));
-
-    try testing.expectError(FileError.FileOutOfBounds, File.H.rightN(1));
-    try testing.expectError(FileError.FileOutOfBounds, File.G.rightN(2));
-    try testing.expectError(FileError.FileOutOfBounds, File.F.rightN(3));
+    try testing.expectEqual(File.C, File.A.rightN(2));
+    try testing.expectEqual(File.D, File.B.rightN(2));
+    try testing.expectEqual(File.E, File.A.rightN(4));
+    try testing.expectEqual(File.A, File.A.rightN(0));
+    try testing.expectEqual(File.H, File.A.rightN(7));
 }

@@ -1,6 +1,6 @@
 //! Move representation: UCI format, castling, promotion.
 
-const std = @import("std");
+const assert = @import("std").debug.assert;
 const Color = @import("./root.zig").Color;
 const Flank = @import("./root.zig").Flank;
 const Square = @import("./root.zig").Square;
@@ -24,21 +24,14 @@ pub const MoveFlag = enum(u2) {
     }
 };
 
-/// Move-related errors: ExpectedACastlingMove, ExpectedANonPromotion, BufferTooSmall.
-pub const MoveError = error{
-    ExpectedACastlingMove,
-    ExpectedANonPromotion,
-    BufferTooSmall,
-};
-
 const CASTLING_BY_FLANK_AND_COLOR: [2][2]Move = [2][2]Move{
     .{
-        Move.newNonPromotion(Square.E1, Square.G1, MoveFlag.Castling) catch unreachable,
-        Move.newNonPromotion(Square.E1, Square.C1, MoveFlag.Castling) catch unreachable,
+        Move.newNonPromotion(Square.E1, Square.G1, MoveFlag.Castling),
+        Move.newNonPromotion(Square.E1, Square.C1, MoveFlag.Castling),
     },
     .{
-        Move.newNonPromotion(Square.E8, Square.G8, MoveFlag.Castling) catch unreachable,
-        Move.newNonPromotion(Square.E8, Square.C8, MoveFlag.Castling) catch unreachable,
+        Move.newNonPromotion(Square.E8, Square.G8, MoveFlag.Castling),
+        Move.newNonPromotion(Square.E8, Square.C8, MoveFlag.Castling),
     },
 };
 
@@ -52,12 +45,9 @@ pub const Move = packed struct {
     /// Default promotion piece when not a promotion move.
     pub const DEFAULT_PROMOTION = PromotionPiece.Knight;
 
-    /// Creates a non-promotion move (normal, en passant, or castling).
-    pub fn newNonPromotion(from: Square, to: Square, flag: MoveFlag) MoveError!Move {
-        if (flag == MoveFlag.Promotion) {
-            return MoveError.ExpectedANonPromotion;
-        }
-
+    /// Creates a non-promotion move (normal, en passant, or castling). Asserts flag is not Promotion.
+    pub fn newNonPromotion(from: Square, to: Square, flag: MoveFlag) Move {
+        assert(flag != MoveFlag.Promotion);
         return Move{
             .from = from,
             .to = to,
@@ -81,15 +71,15 @@ pub const Move = packed struct {
         return CASTLING_BY_FLANK_AND_COLOR[@as(usize, color.int())][@as(usize, flank.int())];
     }
 
-    /// Returns the flank for a castling move. Returns MoveError.ExpectedACastlingMove if not a castling move.
-    pub fn castlingFlank(self: Move) MoveError!Flank {
-        if (self.flag != MoveFlag.Castling) return MoveError.ExpectedACastlingMove;
+    /// Returns the flank for a castling move. Asserts castling flag.
+    pub fn castlingFlank(self: Move) Flank {
+        assert(self.flag == MoveFlag.Castling);
         return if (self.to.int() > self.from.int()) Flank.Kingside else Flank.Queenside;
     }
 
-    /// Writes UCI string (e.g. "e2e4") to buffer. Returns MoveError.BufferTooSmall if buffer.len < 5 for promotions.
-    pub fn uci(self: Move, buffer: []u8) MoveError![]const u8 {
-        if (buffer.len < 5) return MoveError.BufferTooSmall;
+    /// Writes UCI string (e.g. "e2e4") to buffer. Asserts buffer.len >= 5 (promotions may use 5 chars).
+    pub fn uci(self: Move, buffer: []u8) []const u8 {
+        assert(buffer.len >= 5);
 
         const from = self.from.name();
         const to = self.to.name();
@@ -111,7 +101,7 @@ pub const Move = packed struct {
 const testing = @import("std").testing;
 
 test "move newNonPromotion" {
-    const move = try Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
+    const move = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
     try testing.expectEqual(Square.E2, move.from);
     try testing.expectEqual(Square.E4, move.to);
     try testing.expectEqual(MoveFlag.Normal, move.flag);
@@ -143,21 +133,15 @@ test "move castling" {
 test "move uci" {
     var buffer: [10]u8 = undefined;
 
-    const normalMove = try Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
-    const uci = try normalMove.uci(&buffer);
+    const normalMove = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
+    const uci = normalMove.uci(&buffer);
     try testing.expectEqualSlices(u8, "e2e4", uci);
 
     const promotionMove = Move.newPromotion(Square.E7, Square.E8, PromotionPiece.Queen);
-    const uciPromo = try promotionMove.uci(&buffer);
+    const uciPromo = promotionMove.uci(&buffer);
     try testing.expectEqualSlices(u8, "e7e8q", uciPromo);
 
     const castlingMove = Move.castling(Flank.Kingside, Color.White);
-    const uciCastle = try castlingMove.uci(&buffer);
+    const uciCastle = castlingMove.uci(&buffer);
     try testing.expectEqualSlices(u8, "e1g1", uciCastle);
-}
-
-test "move uci buffer too small" {
-    var buffer: [3]u8 = undefined;
-    const move = try Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
-    try testing.expectError(MoveError.BufferTooSmall, move.uci(&buffer));
 }

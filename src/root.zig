@@ -14,16 +14,8 @@ pub const GameResult = @import("game_result.zig").GameResult;
 pub const Rank = @import("rank.zig").Rank;
 pub const Square = @import("square.zig").Square;
 pub const Move = @import("move.zig").Move;
-pub const MoveError = @import("move.zig").MoveError;
 pub const MoveFlag = @import("move.zig").MoveFlag;
-pub const PositionError = @import("position.zig").PositionError;
 pub const FenError = @import("fen.zig").FenError;
-pub const FileError = @import("file.zig").FileError;
-pub const RankError = @import("rank.zig").RankError;
-pub const SquareError = @import("square.zig").SquareError;
-pub const PieceError = @import("piece.zig").PieceError;
-pub const PromotionPieceError = @import("piece.zig").PromotionPieceError;
-pub const PrngError = @import("utils/prng.zig").PrngError;
 
 pub const attacks = @import("attacks/mod.zig");
 pub const fen = @import("fen.zig");

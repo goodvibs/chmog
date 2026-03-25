@@ -130,7 +130,7 @@ pub const Board = struct {
     pub fn isColorInCheck(self: *const Board, color: Color) bool {
         const kingMask = self.mask(Piece.King, color);
         assert(@popCount(kingMask) == 1);
-        return self.isSquareAttacked(Square.fromMask(kingMask) catch unreachable, color.other());
+        return self.isSquareAttacked(Square.fromMask(kingMask), color.other());
     }
 
     /// Returns the bitboard of squares occupied by the given piece type.
@@ -175,7 +175,7 @@ pub const Board = struct {
     /// Returns the piece at the square, or Piece.Null if empty.
     pub fn pieceAtSquare(self: *const Board, square: Square) Piece {
         inline for (@as(usize, comptime Piece.Pawn.int())..@as(usize, comptime Piece.King.int() + 1)) |pieceInt| {
-            const piece = Piece.fromInt(pieceInt) catch unreachable;
+            const piece = Piece.fromInt(pieceInt);
             if (self.pieceMask(piece) & square.mask() != 0) {
                 assert(self.isOccupiedAtSquare(square));
                 return piece;
@@ -205,7 +205,7 @@ pub const Board = struct {
         assert(move.flag == MoveFlag.Castling);
 
         const kingMoveMask = move.from.mask() | move.to.mask();
-        const rookMoveMask = castlingRookMoveMask(move.castlingFlank() catch unreachable, forColor);
+        const rookMoveMask = castlingRookMoveMask(move.castlingFlank(), forColor);
 
         self.xorPieceMask(Piece.King, kingMoveMask);
         self.xorPieceMask(Piece.Rook, rookMoveMask);
@@ -277,7 +277,7 @@ pub const Board = struct {
 
             var attackersSquareMasksIter = iterSetBits(relevantSlidingAttackers);
             while (attackersSquareMasksIter.next()) |attackerSquareMask| {
-                const attackerSquare = Square.fromMask(attackerSquareMask) catch unreachable;
+                const attackerSquare = Square.fromMask(attackerSquareMask);
                 const blockers = between(square, attackerSquare) & occupied;
                 if (blockers == 0) {
                     return true;
@@ -306,7 +306,7 @@ pub const Board = struct {
 
             var defendersSquaresMasksIter = iterSetBits(mask_);
             while (defendersSquaresMasksIter.next()) |defendingSquareMask| {
-                const defenderSquare = Square.fromMask(defendingSquareMask) catch unreachable;
+                const defenderSquare = Square.fromMask(defendingSquareMask);
                 const relevantDiagonals = defenderSquare.diagonalsMask();
                 const relevantOrthogonals = defenderSquare.orthogonalsMask();
 
@@ -315,7 +315,7 @@ pub const Board = struct {
 
                 var attackersSquareMasksIter = iterSetBits(relevantSlidingAttackers);
                 while (attackersSquareMasksIter.next()) |attackerSquareMask| {
-                    const attackerSquare = Square.fromMask(attackerSquareMask) catch unreachable;
+                    const attackerSquare = Square.fromMask(attackerSquareMask);
                     const blockers = between(defenderSquare, attackerSquare) & occupied;
                     if (blockers == 0) {
                         return true;
@@ -523,7 +523,7 @@ test "board makeOrUnmakeEnPassantMove" {
     const originalOccupied = board.occupiedMask();
     const originalPawnMask = board.pieceMask(Piece.Pawn);
 
-    const move = Move.newNonPromotion(Square.E5, Square.D6, MoveFlag.EnPassant) catch unreachable;
+    const move = Move.newNonPromotion(Square.E5, Square.D6, MoveFlag.EnPassant);
     board.makeOrUnmakeEnPassantMove(move, Color.White);
     board.makeOrUnmakeEnPassantMove(move, Color.White);
 
@@ -536,7 +536,7 @@ test "board makeOrUnmakeNormalOrPromotionMove" {
     // Normal move: e2 to e4
     var board = Board.initial();
     const originalOccupied = board.occupiedMask();
-    const move = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal) catch unreachable;
+    const move = Move.newNonPromotion(Square.E2, Square.E4, MoveFlag.Normal);
     board.makeOrUnmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
     board.makeOrUnmakeNormalOrPromotionMove(move, Color.White, Piece.Pawn, Piece.Null);
     try testing.expectEqual(originalOccupied, board.occupiedMask());
@@ -551,7 +551,7 @@ test "board makeOrUnmakeNormalOrPromotionMove" {
     captureBoard.xorColorMask(Color.Black, Square.E7.mask() | Square.A8.mask());
     captureBoard.xorOccupiedMask(Square.E1.mask() | Square.E7.mask() | Square.A1.mask() | Square.A8.mask());
     const captureOriginalOccupied = captureBoard.occupiedMask();
-    const captureMove = Move.newNonPromotion(Square.E1, Square.E7, MoveFlag.Normal) catch unreachable;
+    const captureMove = Move.newNonPromotion(Square.E1, Square.E7, MoveFlag.Normal);
     captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
     captureBoard.makeOrUnmakeNormalOrPromotionMove(captureMove, Color.White, Piece.Rook, Piece.Pawn);
     try testing.expectEqual(captureOriginalOccupied, captureBoard.occupiedMask());
