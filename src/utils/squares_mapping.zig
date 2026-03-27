@@ -31,7 +31,7 @@ pub fn SquaresMappingLookup(comptime numSquaresPerKey: usize, comptime OutputTyp
         }
 
         /// Returns the value for the given square key.
-        pub fn get(self: Self, key: [numSquaresPerKey]Square) OutputType {
+        pub inline fn get(self: Self, key: [numSquaresPerKey]Square) OutputType {
             return self.lookup[indexOfKey(key)];
         }
 

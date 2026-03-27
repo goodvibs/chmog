@@ -91,58 +91,58 @@ pub const Square = enum(u6) {
     pub const DELTA_LEFT: i7 = -1;
 
     /// Creates square from 0-63 index (a8=0, h1=63).
-    pub fn fromInt(index: u6) Square {
+    pub inline fn fromInt(index: u6) Square {
         return @enumFromInt(index);
     }
 
     /// Returns 0-63 index.
-    pub fn int(self: Square) u6 {
+    pub inline fn int(self: Square) u6 {
         return @intFromEnum(self);
     }
 
     /// Creates square from rank and file.
-    pub fn fromRankAndFile(rank_: Rank, file_: File) Square {
+    pub inline fn fromRankAndFile(rank_: Rank, file_: File) Square {
         return Square.fromInt(@as(u6, rank_.int()) * 8 + @as(u6, file_.int()));
     }
 
     /// Returns the rank (1-8).
-    pub fn rank(self: Square) Rank {
+    pub inline fn rank(self: Square) Rank {
         return Rank.fromInt(@intCast(self.int() / 8));
     }
 
     /// Returns the file (a-h).
-    pub fn file(self: Square) File {
+    pub inline fn file(self: Square) File {
         return File.fromInt(@intCast(self.int() % 8));
     }
 
     /// Returns the square for a bitboard with exactly one bit set. Asserts popcount is 1.
-    pub fn fromMask(bitboard: Bitboard) Square {
+    pub inline fn fromMask(bitboard: Bitboard) Square {
         assert(bitboard != 0 and @popCount(bitboard) == 1);
         return Square.fromInt(@truncate(@clz(bitboard)));
     }
 
     /// Returns the bitboard with this square's bit set.
-    pub fn mask(self: Square) Bitboard {
-        return @as(Bitboard, 1 << 63) >> self.int();
+    pub inline fn mask(self: Square) Bitboard {
+        return @as(Bitboard, 1) << (63 - @as(Bitboard, self.int()));
     }
 
     /// Returns distance to rank 8 (0=top).
-    pub fn distanceFromTop(self: Square) u3 {
+    pub inline fn distanceFromTop(self: Square) u3 {
         return self.rank().int();
     }
 
     /// Returns distance to rank 1 (0=bottom).
-    pub fn distanceFromBottom(self: Square) u3 {
+    pub inline fn distanceFromBottom(self: Square) u3 {
         return 7 - self.rank().int();
     }
 
     /// Returns distance to file A (0=left).
-    pub fn distanceFromLeft(self: Square) u3 {
+    pub inline fn distanceFromLeft(self: Square) u3 {
         return self.file().int();
     }
 
     /// Returns distance to file H (0=right).
-    pub fn distanceFromRight(self: Square) u3 {
+    pub inline fn distanceFromRight(self: Square) u3 {
         return 7 - self.file().int();
     }
 
@@ -238,27 +238,27 @@ pub const Square = enum(u6) {
     }
 
     /// Returns the bitboard of all squares on the same diagonals.
-    pub fn diagonalsMask(self: Square) Bitboard {
+    pub inline fn diagonalsMask(self: Square) Bitboard {
         return DIAGONALS_MASK_LOOKUP.get([1]Square{self});
     }
 
     /// Returns the bitboard of all squares on the same rank or file.
-    pub fn orthogonalsMask(self: Square) Bitboard {
+    pub inline fn orthogonalsMask(self: Square) Bitboard {
         return ORTHOGONALS_MASK_LOOKUP.get([1]Square{self});
     }
 
     /// Returns true if both squares share a rank or file.
-    pub fn isOnSameOrthogonalAs(self: Square, other: Square) bool {
+    pub inline fn isOnSameOrthogonalAs(self: Square, other: Square) bool {
         return self.orthogonalsMask() & other.mask() != 0;
     }
 
     /// Returns true if both squares share a diagonal.
-    pub fn isOnSameDiagonalAs(self: Square, other: Square) bool {
+    pub inline fn isOnSameDiagonalAs(self: Square, other: Square) bool {
         return self.diagonalsMask() & other.mask() != 0;
     }
 
     /// Returns true if both squares share a rank, file, or diagonal.
-    pub fn isOnSameLineAs(self: Square, other: Square) bool {
+    pub inline fn isOnSameLineAs(self: Square, other: Square) bool {
         const lines = self.diagonalsMask() | self.orthogonalsMask();
         return lines & other.mask() != 0;
     }
