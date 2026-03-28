@@ -1,5 +1,7 @@
 # chmog
 
+[![gitcgr](https://gitcgr.com/badge/goodvibs/chmog.svg)](https://gitcgr.com/goodvibs/chmog)
+
 A chess move generator written in Zig. Intended for use in high performance chess software, like chess engines.
 
 Priorities, in order:
