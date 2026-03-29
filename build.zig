@@ -3,9 +3,12 @@ const OptimizeMode = @import("std").builtin.OptimizeMode;
 
 const runtime_safety_level = @import("src/runtime_safety_level.zig");
 
+const PerftDepthLevel = enum { Shallow, Deep };
+
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const perft_depth = b.option(PerftDepthLevel, "perft-depth", "Perft test depth (Shallow or Deep)") orelse .Shallow;
 
     // Base library module - no data dependencies, used by generators
     const baseLibMod = b.createModule(.{
@@ -89,6 +92,13 @@ pub fn build(b: *Build) void {
     fullLibMod.addAnonymousImport("bishopMagicAttacksLookup", .{ .root_source_file = bishopFile });
     fullLibMod.addAnonymousImport("rookMagicAttacksLookup", .{ .root_source_file = rookFile });
 
+    const perftPositionsMod = b.createModule(.{
+        .root_source_file = b.path("perft_positions.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    perftPositionsMod.addImport("chmog", fullLibMod);
+
     // Library and tests use the full module
     const lib = b.addLibrary(.{
         .linkage = .static,
@@ -119,6 +129,10 @@ pub fn build(b: *Build) void {
         .optimize = optimize,
     });
     perftTestMod.addImport("chmog", fullLibMod);
+    perftTestMod.addImport("perft_positions", perftPositionsMod);
+    const perftOpts = b.addOptions();
+    perftOpts.addOption(PerftDepthLevel, "depthLevel", perft_depth);
+    perftTestMod.addOptions("perft_options", perftOpts);
     const perftTests = b.addTest(.{
         .root_module = perftTestMod,
     });

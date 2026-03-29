@@ -4,72 +4,85 @@ const std = @import("std");
 const chmog = @import("chmog");
 const Position = chmog.Position;
 const PositionContext = chmog.PositionContext;
-const FenError = chmog.FenError;
-const parseFen = chmog.fen.parseFen;
+const positions = @import("perft_positions");
+const perftDepthLevel = @import("perft_options").depthLevel;
 
-const PositionInitError = FenError || std.mem.Allocator.Error;
+const PositionInitError = positions.PositionInitError;
 
-const NodeCountLookups = struct {
-    const INITIAL_POSITION = [_]u64{
-        1, // Depth 0
-        20, // Depth 1
-        400, // Depth 2
-        8902, // Depth 3
-        197281, // Depth 4
-        4865609, // Depth 5
-        119060324, // Depth 6
+const nodeCountLookups = struct {
+    pub const INITIAL_POSITION = [_]u64{
+        1, // depth 0
+        20, // depth 1
+        400, // depth 2
+        8902, // depth 3
+        197281, // depth 4
+        4865609, // depth 5
+        119060324, // depth 6
     };
 
-    const KIWIPETE = [_]u64{
-        1, // Depth 0
-        48, // Depth 1
-        2039, // Depth 2
-        97862, // Depth 3
-        4085603, // Depth 4
-        193690690, // Depth 5
+    pub const KIWIPETE = [_]u64{
+        1, // depth 0
+        48, // depth 1
+        2039, // depth 2
+        97862, // depth 3
+        4085603, // depth 4
+        193690690, // depth 5
     };
 
-    const POSITION_3 = [_]u64{
-        1, // Depth 0
-        14, // Depth 1
-        191, // Depth 2
-        2812, // Depth 3
-        43238, // Depth 4
-        674624, // Depth 5
-        11030083, // Depth 6
-        178633661, // Depth 7
+    pub const POSITION_3 = [_]u64{
+        1, // depth 0
+        14, // depth 1
+        191, // depth 2
+        2812, // depth 3
+        43238, // depth 4
+        674624, // depth 5
+        11030083, // depth 6
+        178633661, // depth 7
     };
 
-    const POSITION_4 = [_]u64{
-        1, // Depth 0
-        6, // Depth 1
-        264, // Depth 2
-        9467, // Depth 3
-        422333, // Depth 4
-        15833292, // Depth 5
+    pub const POSITION_4 = [_]u64{
+        1, // depth 0
+        6, // depth 1
+        264, // depth 2
+        9467, // depth 3
+        422333, // depth 4
+        15833292, // depth 5
     };
 
-    const POSITION_5 = [_]u64{
-        1, // Depth 0
-        44, // Depth 1
-        1486, // Depth 2
-        62379, // Depth 3
-        2103487, // Depth 4
-        89941194, // Depth 5
+    pub const POSITION_5 = [_]u64{
+        1, // depth 0
+        44, // depth 1
+        1486, // depth 2
+        62379, // depth 3
+        2103487, // depth 4
+        89941194, // depth 5
     };
+};
+
+const shallowDepths = struct {
+    const INITIAL_POSITION: u8 = 5;
+    const KIWIPETE: u8 = 4;
+    const POSITION_3: u8 = 5;
+    const POSITION_4: u8 = 4;
+    const POSITION_5: u8 = 4;
+};
+
+const deepDepths = struct {
+    const INITIAL_POSITION: u8 = shallowDepths.INITIAL_POSITION + 1;
+    const KIWIPETE: u8 = shallowDepths.KIWIPETE + 1;
+    const POSITION_3: u8 = shallowDepths.POSITION_3 + 1;
+    const POSITION_4: u8 = shallowDepths.POSITION_4 + 1;
+    const POSITION_5: u8 = shallowDepths.POSITION_5 + 1;
+};
+
+const depths = switch (perftDepthLevel) {
+    .Shallow => shallowDepths,
+    .Deep => deepDepths,
 };
 
 fn runPerftTest(allocator: std.mem.Allocator, position: *Position, depth: u8, expected_nodes: u64) !void {
     const nodes = try position.perft(allocator, depth);
     try std.testing.expectEqual(expected_nodes, nodes);
-}
-
-fn fenPositionConstructor(comptime fen: []const u8) *const fn (std.mem.Allocator, usize) PositionInitError!Position {
-    return struct {
-        fn call(alloc: std.mem.Allocator, cap: usize) PositionInitError!Position {
-            return parseFen(fen, alloc, cap);
-        }
-    }.call;
 }
 
 fn runPerftTestCase(
@@ -96,40 +109,40 @@ fn runPerftTestCase(
 
 test "perft initial position" {
     try runPerftTestCase(
-        Position.initial,
-        6,
-        &NodeCountLookups.INITIAL_POSITION,
+        positions.createInitialPosition,
+        depths.INITIAL_POSITION,
+        &nodeCountLookups.INITIAL_POSITION,
     );
 }
 
 test "perft kiwipete" {
     try runPerftTestCase(
-        fenPositionConstructor("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"),
-        5,
-        &NodeCountLookups.KIWIPETE,
+        positions.createKiwipete,
+        depths.KIWIPETE,
+        &nodeCountLookups.KIWIPETE,
     );
 }
 
 test "perft position 3" {
     try runPerftTestCase(
-        fenPositionConstructor("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"),
-        6,
-        &NodeCountLookups.POSITION_3,
+        positions.createPosition3,
+        depths.POSITION_3,
+        &nodeCountLookups.POSITION_3,
     );
 }
 
 test "perft position 4" {
     try runPerftTestCase(
-        fenPositionConstructor("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1"),
-        5,
-        &NodeCountLookups.POSITION_4,
+        positions.createPosition4,
+        depths.POSITION_4,
+        &nodeCountLookups.POSITION_4,
     );
 }
 
 test "perft position 5" {
     try runPerftTestCase(
-        fenPositionConstructor("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"),
-        5,
-        &NodeCountLookups.POSITION_5,
+        positions.createPosition5,
+        depths.POSITION_5,
+        &nodeCountLookups.POSITION_5,
     );
 }

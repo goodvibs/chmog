@@ -123,7 +123,7 @@ pub const Square = enum(u6) {
 
     /// Returns the bitboard with this square's bit set.
     pub inline fn mask(self: Square) Bitboard {
-        return @as(Bitboard, 1) << (63 - @as(Bitboard, self.int()));
+        return @as(Bitboard, 1) << (63 - @intFromEnum(self));
     }
 
     /// Returns distance to rank 8 (0=top).
