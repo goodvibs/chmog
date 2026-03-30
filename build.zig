@@ -1,4 +1,5 @@
 const builtin = @import("builtin");
+const path = @import("std").fs.path;
 const Build = @import("std").Build;
 const OptimizeMode = @import("std").builtin.OptimizeMode;
 
@@ -173,6 +174,13 @@ pub fn build(b: *Build) void {
         "Record perft tests with xctrace Time Profiler (macOS only). Default trace path is under the install prefix. Prefer -Doptimize=ReleaseFast for release-like profiling.",
     );
     if (builtin.os.tag == .macos) {
+        var mkdir_step: ?*Build.Step.Run = null;
+        if (path.dirname(profileTrace)) |parent_dir| {
+            const m = b.addSystemCommand(&.{ "mkdir", "-p", parent_dir });
+            m.has_side_effects = true;
+            mkdir_step = m;
+        }
+
         const xctrace = b.addSystemCommand(&.{ "xcrun", "xctrace", "record", "--template", "Time Profiler" });
         xctrace.addArg("--output");
         xctrace.addArg(profileTrace);
@@ -183,6 +191,9 @@ pub fn build(b: *Build) void {
         xctrace.addArtifactArg(perftTests);
         xctrace.stdio = .inherit;
         xctrace.has_side_effects = true;
+        if (mkdir_step) |m| {
+            xctrace.step.dependOn(&m.step);
+        }
         profileStep.dependOn(&xctrace.step);
     } else {
         const failProfile = b.addFail("the profile step is only supported on macOS (requires xcrun xctrace)");

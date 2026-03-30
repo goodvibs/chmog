@@ -37,7 +37,7 @@ Typical usage (release-like optimization):
 zig build profile -Doptimize=ReleaseFast
 ```
 
-This writes a `.trace` bundle. By default the path is **`perft-profile.trace` under the install prefix** (same place as `zig build install` / `zig build docs`: typically `zig-out/perft-profile.trace` when using the default prefix). Open it with **Instruments** or `open zig-out/perft-profile.trace` (adjust if you use `-p`).
+This writes a `.trace` bundle. By default the path is **`perft-profile.trace` under the install prefix** (same place as `zig build install` / `zig build docs`: typically `zig-out/perft-profile.trace` when using the default prefix). The build runs **`mkdir -p`** on the trace path’s parent first, so profiling works even when **`zig-out/`** does not exist yet (unlike raw `xctrace --output`). Open it with **Instruments** or `open zig-out/perft-profile.trace` (adjust if you use `-p`).
 
 Options:
 
