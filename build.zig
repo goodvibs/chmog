@@ -1,14 +1,42 @@
+const builtin = @import("builtin");
 const Build = @import("std").Build;
 const OptimizeMode = @import("std").builtin.OptimizeMode;
 
-const runtime_safety_level = @import("src/runtime_safety_level.zig");
+pub const RuntimeSafetyLevel = enum {
+    None,
+    Light,
+    Heavy,
+
+    pub fn fromOptimize(mode: OptimizeMode) RuntimeSafetyLevel {
+        return switch (mode) {
+            .Debug => .Heavy,
+            .ReleaseSafe => .Light,
+            .ReleaseFast, .ReleaseSmall => .None,
+        };
+    }
+};
 
 const PerftDepthLevel = enum { Shallow, Deep };
 
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const perft_depth = b.option(PerftDepthLevel, "perft-depth", "Perft depth tier for tests and bench (Shallow or Deep)") orelse .Shallow;
+    const perft_depth = b.option(
+        PerftDepthLevel,
+        "perft-depth",
+        "Perft depth tier for tests and bench (Shallow or Deep)",
+    ) orelse .Shallow;
+
+    const profileTrace = b.option(
+        []const u8,
+        "profile-trace",
+        "Output path for xctrace Time Profiler .trace (profile step, macOS); default is perft-profile.trace under the install prefix (same as zig-out when using default -p)",
+    ) orelse b.pathJoin(&.{ b.install_path, "perft-profile.trace" });
+    const profileTimeLimit = b.option(
+        []const u8,
+        "profile-time-limit",
+        "Value for xctrace record --time-limit (profile step, macOS); must exceed perft runtime or xctrace may exit non-zero",
+    ) orelse "90s";
 
     // Base library module - no data dependencies, used by generators
     const baseLibMod = b.createModule(.{
@@ -18,11 +46,11 @@ pub fn build(b: *Build) void {
     });
 
     const baseLibOpts = b.addOptions();
-    baseLibOpts.addOption(runtime_safety_level.RuntimeSafetyLevel, "level", runtime_safety_level.fromOptimize(.Debug));
+    baseLibOpts.addOption(RuntimeSafetyLevel, "level", RuntimeSafetyLevel.fromOptimize(.Debug));
     baseLibMod.addOptions("build_options", baseLibOpts);
 
-    const clap_dep = b.lazyDependency("clap", .{}) orelse return;
-    const clap = clap_dep.module("clap");
+    const clapDep = b.lazyDependency("clap", .{}) orelse return;
+    const clap = clapDep.module("clap");
 
     const binUtils = b.createModule(.{
         .root_source_file = b.path("bin_utils.zig"),
@@ -84,7 +112,7 @@ pub fn build(b: *Build) void {
     });
 
     const fullLibOpts = b.addOptions();
-    fullLibOpts.addOption(runtime_safety_level.RuntimeSafetyLevel, "level", runtime_safety_level.fromOptimize(optimize));
+    fullLibOpts.addOption(RuntimeSafetyLevel, "level", RuntimeSafetyLevel.fromOptimize(optimize));
     fullLibMod.addOptions("build_options", fullLibOpts);
 
     // Add output files as imports
@@ -139,6 +167,27 @@ pub fn build(b: *Build) void {
     const runPerftTests = b.addRunArtifact(perftTests);
     const perftTestStep = b.step("perft-test", "Run perft tests");
     perftTestStep.dependOn(&runPerftTests.step);
+
+    const profileStep = b.step(
+        "profile",
+        "Record perft tests with xctrace Time Profiler (macOS only). Default trace path is under the install prefix. Prefer -Doptimize=ReleaseFast for release-like profiling.",
+    );
+    if (builtin.os.tag == .macos) {
+        const xctrace = b.addSystemCommand(&.{ "xcrun", "xctrace", "record", "--template", "Time Profiler" });
+        xctrace.addArg("--output");
+        xctrace.addArg(profileTrace);
+        xctrace.addArg("--time-limit");
+        xctrace.addArg(profileTimeLimit);
+        xctrace.addArg("--launch");
+        xctrace.addArg("--");
+        xctrace.addArtifactArg(perftTests);
+        xctrace.stdio = .inherit;
+        xctrace.has_side_effects = true;
+        profileStep.dependOn(&xctrace.step);
+    } else {
+        const failProfile = b.addFail("the profile step is only supported on macOS (requires xcrun xctrace)");
+        profileStep.dependOn(&failProfile.step);
+    }
 
     const testStep = b.step("test", "Run all tests");
     testStep.dependOn(unitTestStep);
