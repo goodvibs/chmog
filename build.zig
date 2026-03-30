@@ -181,7 +181,7 @@ pub fn build(b: *Build) void {
             mkdir_step = m;
         }
 
-        const xctrace = b.addSystemCommand(&.{ "xcrun", "xctrace", "record", "--template", "Time Profiler" });
+        const xctrace = b.addSystemCommand(&.{ "xcrun", "xctrace", "record", "--template", "Time Profiler", "--append-run" });
         xctrace.addArg("--output");
         xctrace.addArg(profileTrace);
         xctrace.addArg("--time-limit");
