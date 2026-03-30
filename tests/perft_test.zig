@@ -4,10 +4,9 @@ const std = @import("std");
 const chmog = @import("chmog");
 const Position = chmog.Position;
 const PositionContext = chmog.PositionContext;
-const positions = @import("perft_positions");
-const perftDepthLevel = @import("perft_options").depthLevel;
+const perft = @import("perft_common");
 
-const PositionInitError = positions.PositionInitError;
+const PositionInitError = perft.PositionInitError;
 
 const nodeCountLookups = struct {
     pub const INITIAL_POSITION = [_]u64{
@@ -59,26 +58,7 @@ const nodeCountLookups = struct {
     };
 };
 
-const shallowDepths = struct {
-    const INITIAL_POSITION: u8 = 5;
-    const KIWIPETE: u8 = 4;
-    const POSITION_3: u8 = 5;
-    const POSITION_4: u8 = 4;
-    const POSITION_5: u8 = 4;
-};
-
-const deepDepths = struct {
-    const INITIAL_POSITION: u8 = shallowDepths.INITIAL_POSITION + 1;
-    const KIWIPETE: u8 = shallowDepths.KIWIPETE + 1;
-    const POSITION_3: u8 = shallowDepths.POSITION_3 + 1;
-    const POSITION_4: u8 = shallowDepths.POSITION_4 + 1;
-    const POSITION_5: u8 = shallowDepths.POSITION_5 + 1;
-};
-
-const depths = switch (perftDepthLevel) {
-    .Shallow => shallowDepths,
-    .Deep => deepDepths,
-};
+const depths = perft.depths;
 
 fn runPerftTest(allocator: std.mem.Allocator, position: *Position, depth: u8, expected_nodes: u64) !void {
     const nodes = try position.perft(allocator, depth);
@@ -109,7 +89,7 @@ fn runPerftTestCase(
 
 test "perft initial position" {
     try runPerftTestCase(
-        positions.createInitialPosition,
+        perft.createInitialPosition,
         depths.INITIAL_POSITION,
         &nodeCountLookups.INITIAL_POSITION,
     );
@@ -117,7 +97,7 @@ test "perft initial position" {
 
 test "perft kiwipete" {
     try runPerftTestCase(
-        positions.createKiwipete,
+        perft.createKiwipete,
         depths.KIWIPETE,
         &nodeCountLookups.KIWIPETE,
     );
@@ -125,7 +105,7 @@ test "perft kiwipete" {
 
 test "perft position 3" {
     try runPerftTestCase(
-        positions.createPosition3,
+        perft.createPosition3,
         depths.POSITION_3,
         &nodeCountLookups.POSITION_3,
     );
@@ -133,7 +113,7 @@ test "perft position 3" {
 
 test "perft position 4" {
     try runPerftTestCase(
-        positions.createPosition4,
+        perft.createPosition4,
         depths.POSITION_4,
         &nodeCountLookups.POSITION_4,
     );
@@ -141,7 +121,7 @@ test "perft position 4" {
 
 test "perft position 5" {
     try runPerftTestCase(
-        positions.createPosition5,
+        perft.createPosition5,
         depths.POSITION_5,
         &nodeCountLookups.POSITION_5,
     );

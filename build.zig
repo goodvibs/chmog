@@ -8,7 +8,7 @@ const PerftDepthLevel = enum { Shallow, Deep };
 pub fn build(b: *Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const perft_depth = b.option(PerftDepthLevel, "perft-depth", "Perft test depth (Shallow or Deep)") orelse .Shallow;
+    const perft_depth = b.option(PerftDepthLevel, "perft-depth", "Perft depth tier for tests and bench (Shallow or Deep)") orelse .Shallow;
 
     // Base library module - no data dependencies, used by generators
     const baseLibMod = b.createModule(.{
@@ -92,12 +92,15 @@ pub fn build(b: *Build) void {
     fullLibMod.addAnonymousImport("bishopMagicAttacksLookup", .{ .root_source_file = bishopFile });
     fullLibMod.addAnonymousImport("rookMagicAttacksLookup", .{ .root_source_file = rookFile });
 
-    const perftPositionsMod = b.createModule(.{
-        .root_source_file = b.path("perft_positions.zig"),
+    const perftCommonMod = b.createModule(.{
+        .root_source_file = b.path("perft_common.zig"),
         .target = target,
         .optimize = optimize,
     });
-    perftPositionsMod.addImport("chmog", fullLibMod);
+    perftCommonMod.addImport("chmog", fullLibMod);
+    const perftOpts = b.addOptions();
+    perftOpts.addOption(PerftDepthLevel, "depthLevel", perft_depth);
+    perftCommonMod.addOptions("perft_options", perftOpts);
 
     // Library and tests use the full module
     const lib = b.addLibrary(.{
@@ -129,10 +132,7 @@ pub fn build(b: *Build) void {
         .optimize = optimize,
     });
     perftTestMod.addImport("chmog", fullLibMod);
-    perftTestMod.addImport("perft_positions", perftPositionsMod);
-    const perftOpts = b.addOptions();
-    perftOpts.addOption(PerftDepthLevel, "depthLevel", perft_depth);
-    perftTestMod.addOptions("perft_options", perftOpts);
+    perftTestMod.addImport("perft_common", perftCommonMod);
     const perftTests = b.addTest(.{
         .root_module = perftTestMod,
     });
@@ -143,6 +143,24 @@ pub fn build(b: *Build) void {
     const testStep = b.step("test", "Run all tests");
     testStep.dependOn(unitTestStep);
     testStep.dependOn(perftTestStep);
+
+    const perftBenchMod = b.createModule(.{
+        .root_source_file = b.path("benches/perft_bench.zig"),
+        .target = target,
+        .optimize = OptimizeMode.ReleaseFast,
+    });
+    perftBenchMod.addImport("chmog", fullLibMod);
+    perftBenchMod.addImport("perft_common", perftCommonMod);
+    const perftBenchExe = b.addExecutable(.{
+        .name = "perft-bench",
+        .root_module = perftBenchMod,
+    });
+    const runPerftBench = b.addRunArtifact(perftBenchExe);
+    if (b.args) |args| {
+        runPerftBench.addArgs(args);
+    }
+    const benchStep = b.step("bench", "Run perft benchmarks");
+    benchStep.dependOn(&runPerftBench.step);
 
     // Expose generation scripts
     const runZobristStep = b.step("gen-zobrist", "Generate zobrist keys");
