@@ -187,7 +187,7 @@ pub const Board = struct {
     }
 
     /// Returns the piece at the square, or Piece.Null if empty.
-    pub fn pieceAtSquare(self: *const Board, square: Square) Piece {
+    pub inline fn pieceAtSquare(self: *const Board, square: Square) Piece {
         return self.pieces[square.int()];
     }
 
