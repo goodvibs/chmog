@@ -293,11 +293,12 @@ pub const Position = struct {
 
         while (slidingThreatMasksIter.next()) |attackingSliderMask| {
             const attackingSliderSquare = Square.fromMask(attackingSliderMask);
+
             const betweenMask = between(kingSquare, attackingSliderSquare);
             assert(betweenMask & (kingSquare.mask() | attackingSliderMask) == 0);
+
             const occupiedBetween = betweenMask & self.board.occupiedMask();
-            const numBlockers = @popCount(occupiedBetween);
-            switch (numBlockers) {
+            switch (@popCount(occupiedBetween)) {
                 0 => self.currentContextMut().checkers |= attackingSliderMask,
                 1 => {
                     self.currentContextMut().pinners |= attackingSliderMask;
