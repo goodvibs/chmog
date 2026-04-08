@@ -39,10 +39,10 @@ fn benchPerftPosition(
     const alloc = fba.allocator();
 
     var pos = try create(alloc, numContexts);
-    defer pos.contexts.deinit(alloc);
+    defer pos.deinit(alloc);
 
     var timer = try std.time.Timer.start();
-    const nodes = try pos.perft(alloc, depth);
+    const nodes = try pos.perft(depth);
     const elapsedNs = timer.read();
 
     try printBenchLine(stdout, name, depth, nodes, elapsedNs);

@@ -9,6 +9,7 @@ pub const File = @import("file.zig").File;
 pub const Piece = @import("piece.zig").Piece;
 pub const PromotionPiece = @import("piece.zig").PromotionPiece;
 pub const Position = @import("position.zig").Position;
+pub const PositionError = @import("position.zig").PositionError;
 pub const PositionContext = @import("position_context.zig").PositionContext;
 pub const GameResult = @import("game_result.zig").GameResult;
 pub const Rank = @import("rank.zig").Rank;

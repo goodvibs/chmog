@@ -60,8 +60,8 @@ const nodeCountLookups = struct {
 
 const depths = perft.depths;
 
-fn runPerftTest(allocator: std.mem.Allocator, position: *Position, depth: u8, expected_nodes: u64) !void {
-    const nodes = try position.perft(allocator, depth);
+fn runPerftTest(position: *Position, depth: u8, expected_nodes: u64) !void {
+    const nodes = try position.perft(depth);
     try std.testing.expectEqual(expected_nodes, nodes);
 }
 
@@ -77,14 +77,9 @@ fn runPerftTestCase(
     const alloc = fba.allocator();
 
     var pos = try createPosition(alloc, numContexts);
-    defer pos.contexts.deinit(alloc);
+    defer pos.deinit(alloc);
 
-    try runPerftTest(
-        alloc,
-        &pos,
-        depth,
-        nodeCountLookup[depth],
-    );
+    try runPerftTest(&pos, depth, nodeCountLookup[depth]);
 }
 
 test "perft initial position" {

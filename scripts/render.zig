@@ -72,7 +72,7 @@ pub fn main() !void {
         std.debug.print("Error parsing FEN: {}\n", .{err});
         return err;
     };
-    defer position.contexts.deinit(allocator);
+    defer position.deinit(allocator);
 
     const stdout = std.fs.File.stdout();
     var buf: [8192]u8 = undefined;

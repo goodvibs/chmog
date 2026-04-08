@@ -1,9 +1,13 @@
 //! Game position with move history and context stack for make/unmake.
+//!
+//! ReleaseFast perft (`zig build bench -Doptimize=ReleaseFast`) is dominated by move generation and
+//! make/unmake. For percentage breakdown of `genLegalMoves`, `makeMove` (including `updateCheckInfo`),
+//! and helpers, use a sampling profiler: `zig build profile` (macOS / Instruments) or `perf record`
+//! on the `perft-bench` binary (Linux).
 
 const std = @import("std");
 const runtimeSafetyLevel = @import("build_options").level;
 const assert = @import("std").debug.assert;
-const ArrayList = @import("std").ArrayList;
 const Allocator = @import("std").mem.Allocator;
 const Move = @import("./root.zig").Move;
 const MoveFlag = @import("./root.zig").MoveFlag;
@@ -32,32 +36,46 @@ const pawnsPushes = @import("./root.zig").attacks.pawnsPushes;
 const edgeToEdge = @import("./root.zig").utils.edgeToEdge;
 const between = @import("./root.zig").utils.between;
 
+/// Returned when the context stack is full (`contextsCapacity` too small for search depth).
+pub const PositionError = error{ContextStackOverflow};
+
 /// Chess position: board state, move history stack, halfmove clock, side to move.
 pub const Position = struct {
     board: Board,
-    contexts: ArrayList(PositionContext),
+    /// Stack of position contexts; indices `0..numContexts` are valid (`context_len >= 1`).
+    contextsBuf: []PositionContext,
+    numContexts: usize,
     halfmove: u10,
     gameResult: GameResult,
     sideToMove: Color,
 
+    pub fn deinit(self: *Position, gpa: Allocator) void {
+        gpa.free(self.contextsBuf);
+        self.contextsBuf = &[_]PositionContext{};
+        self.numContexts = 0;
+    }
+
     fn depth(self: *const Position) usize {
-        return self.contexts.items.len - 1;
+        return self.numContexts - 1;
     }
 
     /// Returns a copy of the context for the current position. Pointers are
     /// not long lived; they are invalidated when elements are added.
     pub fn currentContext(self: *const Position) *const PositionContext {
-        return &self.contexts.items[self.depth()];
+        return &self.contextsBuf[self.depth()];
     }
 
     pub fn currentContextMut(self: *const Position) *PositionContext {
-        return &self.contexts.items[self.depth()];
+        return &self.contextsBuf[self.depth()];
     }
 
-    /// Creates the standard starting position. contextsCapacity: hint for move history.
+    /// Creates the standard starting position. `contextsCapacity` is the number of plies of move
+    /// history that can be stored (root context plus pushes); must be at least 1.
     pub fn initial(allocator: std.mem.Allocator, contextsCapacity: usize) Allocator.Error!Position {
-        var contexts = try ArrayList(PositionContext).initCapacity(allocator, contextsCapacity);
-        try contexts.append(allocator, PositionContext{
+        const cap = @max(1, contextsCapacity);
+        const buf = try allocator.alloc(PositionContext, cap);
+        errdefer allocator.free(buf);
+        buf[0] = PositionContext{
             .checkers = 0,
             .pinners = 0,
             .checkBlockers = 0,
@@ -68,10 +86,11 @@ pub const Position = struct {
             .doublePawnPushFile = null,
             .halfmoveClock = 0,
             .repetition = 0,
-        });
+        };
         var pos = Position{
             .board = Board.initial(),
-            .contexts = contexts,
+            .contextsBuf = buf,
+            .numContexts = 1,
             .halfmove = 0,
             .gameResult = GameResult.None,
             .sideToMove = Color.White,
@@ -134,7 +153,7 @@ pub const Position = struct {
         self.board.validate();
         self.currentContext().validate();
         self.validateCurrentContext();
-        for (self.contexts.items) |context| {
+        for (self.contextsBuf[0..self.numContexts]) |context| {
             context.validate();
         }
         assert(self.doHalfmoveAndSideToMoveAgree());
@@ -148,11 +167,15 @@ pub const Position = struct {
         }
     }
 
-    /// Applies the move and advances the position. Allocator used for context stack.
-    pub fn makeMove(self: *Position, allocator: std.mem.Allocator, move: Move) Allocator.Error!void {
+    /// Applies the move and advances the position. Fails with `error.ContextStackOverflow` if the
+    /// context stack is full; size the stack via `contextsCapacity` in `initial` / `parseFen`.
+    pub fn makeMove(self: *Position, move: Move) PositionError!void {
         self.validateIfRuntimeSafety();
 
-        try self.contexts.append(allocator, self.contexts.items[self.depth()]);
+        if (self.numContexts >= self.contextsBuf.len) return error.ContextStackOverflow;
+        const d = self.depth();
+        self.contextsBuf[d + 1] = self.contextsBuf[d];
+        self.numContexts += 1;
 
         self.currentContextMut().halfmoveClock += 1;
         self.currentContextMut().doublePawnPushFile = null;
@@ -229,6 +252,23 @@ pub const Position = struct {
         self.validateIfRuntimeSafety();
     }
 
+    // Incremental check/pin maintenance (design sketch; current code uses full recompute below).
+    //
+    // Full `updateCheckInfo` scans every opponent slider on the king's diagonals and orthogonals.
+    // An incremental variant would update only rays affected by the last move:
+    // - Let `M` be the set of squares vacated or occupied by the move (from, to, en passant
+    //   capture square, castling rook hop). For each direction from the king, if the closest
+    //   opponent slider on that ray could have its line-of-sight changed by `M`, recompute
+    //   checkers/pinners on that ray only (same `between` + occupancy popcount logic as now).
+    // - Knight and pawn checks: XOR or patch using attacks from the king square intersected with
+    //   piece masks; only pieces on `M` or the king's neighborhood need re-evaluation when the king
+    //   did not move; when the king moves, refresh all non-sliding attackers from the new square.
+    // - Discovered attacks: moving a blocker off a ray can expose a slider; moving onto a ray can
+    //   block. Restricting work to rays intersecting `M` covers these cases.
+    // Data structures could cache per-ray "first blocker" or attack bitboards; the tricky part is
+    // keeping pinners/checkBlockers consistent when multiple sliders share a ray—same invariants as
+    // the full scan, but scoped to a subset of rays.
+
     pub fn updateCheckInfo(self: *Position) void {
         self.currentContextMut().checkers = 0;
         self.currentContextMut().pinners = 0;
@@ -295,14 +335,14 @@ pub const Position = struct {
             },
         }
 
-        _ = self.contexts.pop();
+        self.numContexts -= 1;
 
         self.validateIfRuntimeSafety();
     }
 
     /// Perft (perft function): counts leaf nodes at given depth.
     /// Depth 0 returns 1. Depth 1 returns number of legal moves.
-    pub fn perft(self: *Position, allocator: std.mem.Allocator, targetDepth: u8) !u64 {
+    pub fn perft(self: *Position, targetDepth: u8) PositionError!u64 {
         if (targetDepth == 0) return 1;
 
         var moves: [256]Move = undefined;
@@ -312,8 +352,8 @@ pub const Position = struct {
         var nodes: u64 = 0;
         var i: usize = 0;
         while (i < numMoves) : (i += 1) {
-            try self.makeMove(allocator, moves[i]);
-            nodes += try self.perft(allocator, targetDepth - 1);
+            try self.makeMove(moves[i]);
+            nodes += try self.perft(targetDepth - 1);
             self.unmakeMove(moves[i]);
         }
         return nodes;
